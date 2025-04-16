@@ -83,8 +83,9 @@
 
   <div class="app-layout">
     <!-- Sidebar toggle button (visible on mobile) -->
-    <button id="sidebar-toggle" class="sidebar-toggle-btn">
-      <i class="fas fa-sliders-h"></i> Filtros
+    <button id="toggle-sidebar-btn" class="sidebar-toggle" aria-label="Toggle Sidebar">
+      <i class="fas fa-chevron-left"></i>
+      <i class="fas fa-chevron-right"></i>
     </button>
 
     <!-- Left sidebar with filters -->
@@ -345,9 +346,6 @@
     <main class="main-content">
       <div class="header">
         <div class="header-left">
-          <button id="toggle-sidebar-btn" class="toggle-sidebar-btn">
-            <i class="fas fa-bars"></i>
-          </button>
           <div class="logo">
             <i class="fas fa-map-marked-alt"></i>
             <h1>Triping</h1>
@@ -366,9 +364,9 @@
             </div>
           </div>
           <div class="credit-display" id="credit-display">
-            <span class="credit-count"><i class="fas fa-ticket-alt"></i> <span id="credits-count">3</span> créditos</span>
+            <span class="credit-count"><i class="fas fa-ticket-alt"></i> <span id="credits-count">3</span></span>
             <button id="buy-credits-btn" class="buy-credits-btn">
-              <i class="fas fa-plus-circle"></i> Comprar
+              <i class="fas fa-plus-circle"></i> <span>Comprar</span>
             </button>
           </div>
         </div>
@@ -395,6 +393,7 @@
         </div>
         <div id="response"></div>
         <div class="action-buttons" id="action-buttons">
+          <button id="regenerar-btn" class="action-btn"><i class="fas fa-sync-alt"></i> Regenerar</button>
           <button id="copiar-btn" class="action-btn"><i class="fas fa-copy"></i> Copiar</button>
           <button id="imprimir-btn" class="action-btn"><i class="fas fa-print"></i> Imprimir</button>
           <button id="pdf-btn" class="action-btn"><i class="fas fa-file-pdf"></i> Guardar PDF</button>

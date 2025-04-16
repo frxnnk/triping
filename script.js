@@ -601,15 +601,32 @@ function initCreditsSystem() {
   });
 }
 
-// Función para actualizar el display de créditos
+// Corregir la función updateCreditsDisplay para evitar duplicación
 function updateCreditsDisplay() {
-  const credits = parseInt(localStorage.getItem('credits') || '0');
-  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = localStorage.getItem('credits') || '3';
+  const currentLang = localStorage.getItem('language') || 'es';
   
-  if (usingOwnKey) {
-    creditsCount.textContent = "∞"; // Símbolo de infinito
-  } else {
-    creditsCount.textContent = credits.toString();
+  // Actualizar solo el número, no el texto
+  document.getElementById('credits-count').textContent = credits;
+  
+  // Actualizar el texto de "créditos" por separado, solo si está definido en las traducciones
+  const creditText = document.querySelector('.credit-count span:nth-child(2)');
+  const creditLabel = document.querySelector('.credit-count');
+  
+  if (creditLabel) {
+    // Limpiar el texto existente
+    creditLabel.innerHTML = `<i class="fas fa-ticket-alt"></i> <span id="credits-count">${credits}</span>`;
+    
+    // Añadir el texto traducido
+    const translatedText = translations[currentLang]?.credits_count || "créditos";
+    creditLabel.innerHTML += ` ${translatedText}`;
+  }
+  
+  // Actualizar el texto del botón de compra
+  const buyBtn = document.getElementById('buy-credits-btn');
+  if (buyBtn) {
+    const buyText = translations[currentLang]?.buy_credits || "Comprar";
+    buyBtn.innerHTML = `<i class="fas fa-plus-circle"></i> ${buyText}`;
   }
 }
 
@@ -1031,7 +1048,11 @@ async function generarItinerario() {
           const credits = parseInt(localStorage.getItem('credits') || '0');
           const newCredits = credits - 1;
           localStorage.setItem('credits', newCredits.toString());
+          
+          // Actualizar la visualización de créditos inmediatamente
           updateCreditsDisplay();
+          
+          console.log(`Crédito descontado. Quedan ${newCredits} créditos.`);
           
           // Si quedan pocos créditos, mostrar una notificación
           if (newCredits <= 1) {
@@ -1063,9 +1084,12 @@ async function generarItinerario() {
     // Ocultar el indicador de carga
     loadingIndicator.style.display = 'none';
   }
+  
+  // Al finalizar (antes de procesar respuesta), cerrar el sidebar en móvil
+  closeFiltersSidebarOnMobile();
 }
 
-// Función para procesar y mejorar visualmente el itinerario sin usar marked
+// Función para procesar y mejorar visualmente el itinerario con funcionalidad de edición
 function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   // Asegurarse de que el estado vacío esté oculto cuando hay contenido
   showEmptyState(false);
@@ -1078,8 +1102,49 @@ function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
     </div>
   `;
   
-  // Convertir markdown básico a HTML
-  let html = respuesta
+  // Guardar el itinerario completo para futuras referencias
+  localStorage.setItem('currentFullItinerary', respuesta);
+  localStorage.setItem('currentDestination', destino);
+  localStorage.setItem('currentStartDate', fechaInicio);
+  localStorage.setItem('currentEndDate', fechaFin);
+  
+  // Dividir el itinerario por días
+  const dayRegex = /## Día \d+[^\n]*/g;
+  const dayMatches = [...respuesta.matchAll(dayRegex)];
+  
+  if (dayMatches.length === 0) {
+    // Si no hay días definidos, mostrar todo como un solo bloque
+    procesarContenidoCompleto(respuesta);
+  } else {
+    // Procesar por días
+    for (let i = 0; i < dayMatches.length; i++) {
+      const dayTitleMatch = dayMatches[i];
+      const dayTitle = dayTitleMatch[0];
+      const dayStart = dayTitleMatch.index;
+      const dayEnd = (i < dayMatches.length - 1) ? dayMatches[i + 1].index : respuesta.length;
+      
+      const dayContent = respuesta.substring(dayStart, dayEnd);
+      crearSeccionDia(dayTitle, dayContent, i + 1);
+    }
+  }
+  
+  // Mostrar los botones de acción principales
+  actionButtons.style.display = 'flex';
+  
+  // Asegurarse de que la tarjeta de respuesta sea visible
+  responseCard.style.display = 'block';
+  
+  // Desplazarse hasta el resultado
+  responseCard.scrollIntoView({ behavior: 'smooth' });
+  
+  // Guardar el itinerario actual en el historial
+  guardarItinerarioEnHistorial(destino, fechaInicio, fechaFin, respuesta);
+}
+
+// Función para crear una sección de día con controles de edición
+function crearSeccionDia(titulo, contenido, numDia) {
+  // Convertir markdown a HTML para el contenido del día
+  let dayHtml = contenido
     // Convertir encabezados
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
@@ -1097,31 +1162,58 @@ function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
     .replace(/<\/ul>\s*<ul>/g, '');
   
   // Resaltar visualmente las recomendaciones de reserva
-  html = html.replace(/\[RESERVAR\]/g, '<span class="reservation-tag"><i class="fas fa-calendar-check"></i> RESERVAR</span>');
+  dayHtml = dayHtml.replace(/\[RESERVAR\]/g, '<span class="reservation-tag"><i class="fas fa-calendar-check"></i> RESERVAR</span>');
   
   // Añadir iconos a los horarios
-  html = html.replace(/(\d{1,2}:\d{2})/g, '<span class="time-tag"><i class="fas fa-clock"></i> $1</span>');
+  dayHtml = dayHtml.replace(/(\d{1,2}:\d{2})/g, '<span class="time-tag"><i class="fas fa-clock"></i> $1</span>');
   
   // Mejorar visualmente los consejos del día
-  html = html.replace(/<h3>CONSEJOS DEL DÍA<\/h3>/g, '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> CONSEJOS DEL DÍA</h3>');
+  dayHtml = dayHtml.replace(/<h3>CONSEJOS DEL DÍA<\/h3>/g, '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> CONSEJOS DEL DÍA</h3>');
   
   // Añadir clase especial a los transportes
-  html = html.replace(/Transporte: ([^<]+)/g, 'Transporte: <span class="transport-tag"><i class="fas fa-route"></i> $1</span>');
+  dayHtml = dayHtml.replace(/Transporte: ([^<]+)/g, 'Transporte: <span class="transport-tag"><i class="fas fa-route"></i> $1</span>');
   
-  // Añadir el contenido procesado
-  responseBox.innerHTML += html;
+  // Crear el contenedor del día con los controles
+  const dayContainer = document.createElement('div');
+  dayContainer.className = 'day-section';
+  dayContainer.id = `day-${numDia}`;
+  dayContainer.innerHTML = `
+    <div class="day-header">
+      <h2>${titulo}</h2>
+      <div class="day-controls">
+        <button class="day-edit-btn" onclick="editarDia(${numDia})">
+          <i class="fas fa-pencil-alt"></i> Editar
+        </button>
+        <button class="day-regenerate-btn" onclick="regenerarDia(${numDia})">
+          <i class="fas fa-sync-alt"></i> Regenerar
+        </button>
+      </div>
+    </div>
+    <div class="day-content">
+      ${dayHtml}
+    </div>
+  `;
   
-  // Mostrar los botones de acción
-  actionButtons.style.display = 'flex';
+  // Añadir contenedor al responseBox
+  responseBox.appendChild(dayContainer);
   
-  // Asegurarse de que la tarjeta de respuesta sea visible
-  responseCard.style.display = 'block';
-  
-  // Desplazarse hasta el resultado
-  responseCard.scrollIntoView({ behavior: 'smooth' });
-  
-  // Guardar el itinerario actual en el historial
-  guardarItinerarioEnHistorial(destino, fechaInicio, fechaFin, respuesta);
+  // Hacer que cada actividad sea editable
+  const liElements = dayContainer.querySelectorAll('li');
+  liElements.forEach((li, index) => {
+    const activityContainer = document.createElement('div');
+    activityContainer.className = 'activity-container';
+    activityContainer.innerHTML = li.outerHTML + `
+      <div class="activity-controls">
+        <button class="activity-edit-btn" onclick="editarActividad(${numDia}, ${index})">
+          <i class="fas fa-pencil-alt"></i>
+        </button>
+        <button class="activity-regenerate-btn" onclick="regenerarActividad(${numDia}, ${index})">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
+    `;
+    li.parentNode.replaceChild(activityContainer, li);
+  });
 }
 
 // Mejorar la función de procesamiento de texto para destacar URLs y reservas
@@ -1396,18 +1488,22 @@ function setupSidebarToggle() {
   function toggleSidebar() {
     appLayout.classList.toggle('sidebar-collapsed');
     
-    // Actualizar icono según estado
-    if (toggleSidebarHeaderBtn) {
-      const icon = toggleSidebarHeaderBtn.querySelector('i');
-      if (appLayout.classList.contains('sidebar-collapsed')) {
-        icon.className = 'fas fa-bars';
-      } else {
-        icon.className = 'fas fa-times';
-      }
+    // En dispositivos móviles, asegurarse de que se vea el contenido
+    if (window.innerWidth <= 768 && appLayout.classList.contains('sidebar-collapsed')) {
+      // Desplazarse al contenido cuando se cierra el sidebar en móvil
+      const mainContent = document.querySelector('.main-content');
+      mainContent.scrollIntoView({ behavior: 'smooth' });
     }
     
-    // Guardar preferencia
-    localStorage.setItem('sidebarCollapsed', appLayout.classList.contains('sidebar-collapsed'));
+    // Guardar preferencia del usuario
+    const isSidebarCollapsed = appLayout.classList.contains('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', isSidebarCollapsed);
+    
+    // Cambiar el ícono según estado
+    const toggleIcon = toggleSidebarHeaderBtn.querySelector('i');
+    if (toggleIcon) {
+      toggleIcon.className = isSidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+    }
   }
   
   // Gestión del botón flotante (móvil)
@@ -1780,6 +1876,9 @@ function applyLanguageChanges(lang) {
       bestValueTag.textContent = translations[lang].best_value || "Mejor valor";
     }
   }
+  
+  // Actualizar textos del sistema de créditos
+  updateCreditsDisplay(); // Esta función ya actualiza todo lo relacionado con créditos
 }
 
 // Función independiente para mostrar notificaciones de créditos restantes
@@ -2481,4 +2580,310 @@ function generarItinerarioPrueba(destino, fechaInicio, fechaFin) {
   }
   
   return itinerario;
-} 
+}
+
+// Añadir esta función para regenerar un itinerario existente
+function regenerarItinerario() {
+  console.log("Regenerando itinerario...");
+  
+  // Verificar si tenemos suficientes créditos
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  
+  // Si no es modo desarrollo, no tiene créditos y no usa su propia key, mostrar el modal
+  if (!IS_DEV_MODE && credits <= 0 && !usingOwnKey) {
+    openCreditsModal();
+    return;
+  }
+  
+  // Llamar a la función principal de generación
+  generarItinerario();
+}
+
+// Añadir un botón de regenerar si quieres esta funcionalidad
+// En alguna parte apropiada de tu HTML, por ejemplo:
+// <button id="regenerar-btn" class="action-btn"><i class="fas fa-sync-alt"></i> Regenerar</button>
+
+// Y luego agregar el event listener:
+const regenerarBtn = document.getElementById('regenerar-btn');
+if (regenerarBtn) {
+  regenerarBtn.addEventListener('click', regenerarItinerario);
+}
+
+// Función para editar un día específico
+function editarDia(numDia) {
+  const daySection = document.getElementById(`day-${numDia}`);
+  const dayContent = daySection.querySelector('.day-content').innerHTML;
+  
+  // Crear un modal para editar el contenido
+  const modal = document.createElement('div');
+  modal.className = 'edit-modal';
+  modal.innerHTML = `
+    <div class="edit-modal-content">
+      <h3>Editar Día ${numDia}</h3>
+      <textarea id="edit-day-textarea" rows="15" class="edit-textarea">${extraerTextoPlano(dayContent)}</textarea>
+      <div class="edit-buttons">
+        <button class="cancel-edit-btn" onclick="cerrarModalEdicion()">Cancelar</button>
+        <button class="save-edit-btn" onclick="guardarEdicionDia(${numDia})">Guardar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  document.getElementById('edit-day-textarea').focus();
+}
+
+// Función para regenerar un día específico
+function regenerarDia(numDia) {
+  // Verificar créditos primero
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  
+  if (!IS_DEV_MODE && credits <= 0 && !usingOwnKey) {
+    openCreditsModal();
+    return;
+  }
+  
+  // Obtener información del itinerario actual
+  const fullItinerary = localStorage.getItem('currentFullItinerary');
+  const destino = localStorage.getItem('currentDestination');
+  const fechaInicio = localStorage.getItem('currentStartDate');
+  const fechaFin = localStorage.getItem('currentEndDate');
+  
+  // Extraer solo la información del día especificado
+  const dayRegex = /## Día \d+[^\n]*/g;
+  const dayMatches = [...fullItinerary.matchAll(dayRegex)];
+  
+  if (numDia <= dayMatches.length) {
+    const dayTitle = dayMatches[numDia - 1][0];
+    
+    // Mostrar cargando solo para ese día
+    const daySection = document.getElementById(`day-${numDia}`);
+    daySection.innerHTML = `
+      <div class="day-loading">
+        <div class="spinner"></div>
+        <span>Regenerando el día ${numDia}...</span>
+      </div>
+    `;
+    
+    // Preparar prompt específico para este día
+    let systemPrompt = "Eres un EXPERTO EN PLANIFICACIÓN DE VIAJES. Tu tarea es regenerar SOLAMENTE UN DÍA ESPECÍFICO de un itinerario existente. ";
+    systemPrompt += "Mantén el mismo estilo, nivel de detalle y formato que en el ejemplo, pero con nuevas actividades y lugares.\n\n";
+    systemPrompt += "REGLAS OBLIGATORIAS:\n";
+    systemPrompt += "1. Incluye URLs reales para cada lugar/atracción mencionado.\n";
+    systemPrompt += "2. Marca con [RESERVAR] los lugares donde sea necesario reservar.\n";
+    systemPrompt += "3. Especifica el medio de transporte entre actividades.\n";
+    systemPrompt += "4. Incluye una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas.\n";
+    systemPrompt += "5. IMPORTANTE: Genera ÚNICAMENTE el contenido para este día, sin modificar los demás días.";
+    
+    let promptText = `Regenera SOLO el ${dayTitle} del itinerario para mi viaje a ${destino} (del ${fechaInicio} al ${fechaFin}).`;
+    promptText += `\n\nMantén el mismo estilo y formato, pero sugiere actividades y lugares diferentes para este día en particular.`;
+    
+    // Simular o hacer la petición real
+    if (IS_DEV_MODE) {
+      setTimeout(() => {
+        // Generar un día de prueba
+        const nuevoDia = generarDiaPrueba(numDia, destino);
+        actualizarDiaEnItinerario(numDia, nuevoDia);
+      }, 1500);
+    } else {
+      // Hacer la solicitud real a la API
+      fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          promptData: promptText,
+          systemPrompt: systemPrompt
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.choices && data.choices[0]) {
+          const nuevoDia = data.choices[0].message.content;
+          actualizarDiaEnItinerario(numDia, nuevoDia);
+          
+          // Descontar crédito si corresponde
+          const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+          if (!usingOwnKey) {
+            const credits = parseInt(localStorage.getItem('credits') || '0');
+            const newCredits = credits - 1;
+            localStorage.setItem('credits', newCredits.toString());
+            updateCreditsDisplay();
+            
+            if (newCredits <= 1) {
+              showCreditRemainingNotification(newCredits);
+            }
+          }
+        } else {
+          mostrarErrorRegeneracion(numDia);
+        }
+      })
+      .catch(error => {
+        console.error("Error regenerando día:", error);
+        mostrarErrorRegeneracion(numDia);
+      });
+    }
+  }
+}
+
+// Función para actualizar un día en el itinerario
+function actualizarDiaEnItinerario(numDia, nuevoDia) {
+  const daySection = document.getElementById(`day-${numDia}`);
+  if (!daySection) return;
+  
+  // Actualizar el HTML del día
+  crearSeccionDia(`Día ${numDia}`, nuevoDia, numDia);
+  
+  // Reemplazar el día existente
+  daySection.parentNode.replaceChild(
+    document.getElementById(`day-${numDia}`), 
+    daySection
+  );
+  
+  // Guardar el itinerario actualizado
+  actualizarItinerarioCompleto();
+  
+  // Mostrar notificación
+  showNotification(`¡Día ${numDia} regenerado con éxito!`);
+}
+
+// Función para editar una actividad específica
+function editarActividad(numDia, numActividad) {
+  const daySection = document.getElementById(`day-${numDia}`);
+  const activityContainers = daySection.querySelectorAll('.activity-container');
+  
+  if (numActividad < activityContainers.length) {
+    const activityContent = activityContainers[numActividad].querySelector('li').innerHTML;
+    
+    // Crear un modal para editar la actividad
+    const modal = document.createElement('div');
+    modal.className = 'edit-modal';
+    modal.innerHTML = `
+      <div class="edit-modal-content">
+        <h3>Editar Actividad</h3>
+        <textarea id="edit-activity-textarea" rows="5" class="edit-textarea">${extraerTextoPlano(activityContent)}</textarea>
+        <div class="edit-buttons">
+          <button class="cancel-edit-btn" onclick="cerrarModalEdicion()">Cancelar</button>
+          <button class="save-edit-btn" onclick="guardarEdicionActividad(${numDia}, ${numActividad})">Guardar</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.getElementById('edit-activity-textarea').focus();
+  }
+}
+
+// Funciones auxiliares
+function extraerTextoPlano(html) {
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  return temp.textContent || temp.innerText || '';
+}
+
+function cerrarModalEdicion() {
+  const modal = document.querySelector('.edit-modal');
+  if (modal) {
+    document.body.removeChild(modal);
+  }
+}
+
+function guardarEdicionDia(numDia) {
+  const contenido = document.getElementById('edit-day-textarea').value;
+  const daySection = document.getElementById(`day-${numDia}`);
+  
+  // Reemplazar el contenido del día
+  const dayContent = daySection.querySelector('.day-content');
+  dayContent.innerHTML = procesarTextoMarkdown(contenido);
+  
+  // Cerrar el modal
+  cerrarModalEdicion();
+  
+  // Actualizar el itinerario completo
+  actualizarItinerarioCompleto();
+  
+  // Mostrar notificación
+  showNotification(`¡Día ${numDia} actualizado con éxito!`);
+}
+
+function guardarEdicionActividad(numDia, numActividad) {
+  const contenido = document.getElementById('edit-activity-textarea').value;
+  const daySection = document.getElementById(`day-${numDia}`);
+  const activityContainers = daySection.querySelectorAll('.activity-container');
+  
+  if (numActividad < activityContainers.length) {
+    // Reemplazar el contenido de la actividad
+    const activityLi = activityContainers[numActividad].querySelector('li');
+    activityLi.innerHTML = procesarTextoMarkdown(contenido);
+    
+    // Cerrar el modal
+    cerrarModalEdicion();
+    
+    // Actualizar el itinerario completo
+    actualizarItinerarioCompleto();
+    
+    // Mostrar notificación
+    showNotification(`¡Actividad actualizada con éxito!`);
+  }
+}
+
+// Función para generar un día de prueba en modo desarrollo
+function generarDiaPrueba(numDia, destino) {
+  const actividades = [
+    "Desayuno en Café Artesanal [RESERVAR] (https://cafe-artesanal.com) - Transporte: A pie",
+    "Visita al Museo de Historia (https://museo-historia.com) - Transporte: Metro",
+    "Almuerzo en Restaurante Local [RESERVAR] (https://restaurante-local.com) - Transporte: A pie",
+    "Tour por el Casco Antiguo (https://tours-locales.com) - Transporte: A pie",
+    "Cena en Terraza Panorámica [RESERVAR] (https://terraza-panoramica.com) - Transporte: Taxi"
+  ];
+  
+  const consejos = [
+    "Lleva contigo efectivo para los mercados locales donde no suelen aceptar tarjetas",
+    "Las entradas al museo se pueden comprar online para evitar filas",
+    "El transporte público es más económico con tarjetas de varios días",
+    "Los restaurantes con [RESERVAR] suelen llenarse, reserva con al menos 2 días de antelación"
+  ];
+  
+  let dayContent = `## Día ${numDia}\n\n`;
+  
+  // Añadir actividades aleatorias
+  actividades.forEach((act, i) => {
+    dayContent += `- ${(8 + i * 3)}:00 - ${act}\n`;
+  });
+  
+  // Añadir consejos
+  dayContent += "\n### CONSEJOS DEL DÍA\n";
+  consejos.forEach(consejo => {
+    dayContent += `- ${consejo}\n`;
+  });
+  
+  return dayContent;
+}
+
+// Función para actualizar el itinerario completo después de ediciones
+function actualizarItinerarioCompleto() {
+  // Esta función reconstruiría el itinerario completo basado en todas las secciones
+  // y lo guardaría en localStorage para mantener la coherencia
+  // Implementación detallada depende de cómo se almacenan los datos
+}
+
+// Asegurarse de que el toggle funcione correctamente
+if (toggleSidebarBtn) {
+  toggleSidebarBtn.addEventListener('click', toggleSidebar);
+}
+
+// Cerrar automáticamente el sidebar en móviles cuando se genere un itinerario
+function closeFiltersSidebarOnMobile() {
+  if (window.innerWidth <= 768) {
+    const appLayout = document.querySelector('.app-layout');
+    appLayout.classList.add('sidebar-collapsed');
+    
+    // Cambiar el ícono
+    const toggleIcon = toggleSidebarBtn.querySelector('i');
+    if (toggleIcon) {
+      toggleIcon.className = 'fas fa-chevron-right';
+    }
+  }
+}
