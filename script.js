@@ -594,35 +594,22 @@ function decryptApiKey(encryptedKey) {
 // Función para inicializar el sistema de créditos
 function initCreditsSystem() {
   // Verificar si es la primera vez que el usuario visita la página
-  if (localStorage.getItem('credits') === null) {
-    // Configuración inicial: 3 créditos gratuitos
+  if (localStorage.getItem('creditsInitialized') !== 'true') {
+    // Primera visita: asignar 3 créditos iniciales y marcar como inicializado
     localStorage.setItem('credits', '3');
-    localStorage.setItem('usingOwnKey', 'false');
-    localStorage.setItem('freeUsageCount', '0');
-    
-    // Configurar la API key predeterminada encriptada (para usar con los créditos gratuitos)
-    if (!localStorage.getItem('defaultApiKeySet')) {
-      localStorage.setItem('defaultApiKeySet', 'true');
-    }
+    localStorage.setItem('creditsInitialized', 'true');
   }
   
-  // Actualizar el contador de créditos en la UI
+  // Verificar si el usuario usa su propia API key
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  
+  // Si el usuario no está usando su propia key y los créditos no están inicializados, verificar
+  if (!usingOwnKey && !localStorage.getItem('credits')) {
+    localStorage.setItem('credits', '3');
+  }
+  
+  // Actualizar el display de créditos
   updateCreditsDisplay();
-  
-  // Configurar event listeners para el sistema de créditos
-  buyCreditsBtn.addEventListener('click', openCreditsModal);
-  creditsModalClose.addEventListener('click', closeCreditsModal);
-  useOwnKeyBtn.addEventListener('click', configureOwnApiKey);
-  
-  // Event listeners para los botones de compra de paquetes
-  buyPackageBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-      const packageElement = this.closest('.credit-package');
-      const credits = packageElement.dataset.credits;
-      const price = packageElement.dataset.price;
-      processCreditPurchase(credits, price);
-    });
-  });
 }
 
 // Corregir la función updateCreditsDisplay para evitar duplicación
@@ -996,17 +983,14 @@ async function generarItinerario() {
     return;
   }
   
-  // En modo desarrollo, saltamos la verificación de créditos
-  if (!IS_DEV_MODE) {
-    // Verificar si el usuario tiene créditos disponibles o usa su propia API key
-    const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
-    const credits = parseInt(localStorage.getItem('credits') || '0');
-    
-    // Si el usuario no tiene créditos y no usa su propia API key, mostrar el modal
-    if (credits <= 0 && !usingOwnKey) {
-      openCreditsModal();
-      return;
-    }
+  // Verificar si el usuario tiene créditos o está usando una API key propia
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  
+  if (!usingOwnKey && credits <= 0 && !IS_DEV_MODE) {
+    console.log("Sin créditos disponibles - mostrando modal");
+    openCreditsModal();
+    return;
   }
   
   // Cargar el prompt personalizado
@@ -1135,6 +1119,20 @@ async function generarItinerario() {
   
   // Al finalizar (antes de procesar respuesta), cerrar el sidebar en móvil
   closeFiltersSidebarOnMobile();
+  
+  // Al final de la función exitosa, descontar un crédito si no usa api key propia
+  // Colocar este código dentro del bloque de éxito de la generación
+  if (!usingOwnKey && !IS_DEV_MODE) {
+    const newCredits = Math.max(0, credits - 1);
+    console.log(`Descontando crédito: ${credits} -> ${newCredits}`);
+    localStorage.setItem('credits', newCredits.toString());
+    updateCreditsDisplay();
+    
+    // Mostrar notificación si quedan pocos créditos
+    if (newCredits <= 1) {
+      showCreditRemainingNotification(newCredits);
+    }
+  }
 }
 
 // Función para procesar y mejorar visualmente el itinerario con funcionalidad de edición
@@ -2952,4 +2950,26 @@ function closeFiltersSidebarOnMobile() {
       toggleIcon.className = 'fas fa-chevron-right';
     }
   }
+}
+
+// Agregar una función para verificar si una función consumirá créditos
+function willConsumeCredit() {
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  
+  return !usingOwnKey && credits > 0 && !IS_DEV_MODE;
+}
+
+// Agregar logs para depuración
+function checkCreditStatus() {
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  const initialized = localStorage.getItem('creditsInitialized') === 'true';
+  
+  console.log("Estado de créditos:", {
+    usingOwnKey,
+    credits,
+    initialized,
+    isDev: IS_DEV_MODE
+  });
 }
