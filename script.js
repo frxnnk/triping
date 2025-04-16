@@ -693,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Configurar event listeners
   setupEventListeners();
   
-  // Nueva funcionalidad para el sidebar
+  // Nueva funcionalidad para el sidebar - Asegurarnos de que esto se ejecute
   setupSidebarToggle();
   
   // Inicialmente, ocultar el área de respuesta y mostrar estado vacío
@@ -882,8 +882,14 @@ function loadSettings() {
   
   // Cargar estado del sidebar (con validación por tamaño de pantalla)
   const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+  
+  // Solo colapsar en pantallas grandes si el usuario lo guardó así anteriormente
   if (sidebarCollapsed && window.innerWidth > 992) {
     document.querySelector('.app-layout').classList.add('sidebar-collapsed');
+  } else {
+    // Asegurarnos de que el sidebar esté expandido por defecto
+    document.querySelector('.app-layout').classList.remove('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', 'false');
   }
   
   // Configurar fechas por defecto
@@ -1170,9 +1176,6 @@ function crearSeccionDia(titulo, contenido, numDia) {
   // Mejorar visualmente los consejos del día
   dayHtml = dayHtml.replace(/<h3>CONSEJOS DEL DÍA<\/h3>/g, '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> CONSEJOS DEL DÍA</h3>');
   
-  // Añadir clase especial a los transportes
-  dayHtml = dayHtml.replace(/Transporte: ([^<]+)/g, 'Transporte: <span class="transport-tag"><i class="fas fa-route"></i> $1</span>');
-  
   // Crear el contenedor del día con los controles
   const dayContainer = document.createElement('div');
   dayContainer.className = 'day-section';
@@ -1197,23 +1200,49 @@ function crearSeccionDia(titulo, contenido, numDia) {
   // Añadir contenedor al responseBox
   responseBox.appendChild(dayContainer);
   
-  // Hacer que cada actividad sea editable
+  // Hacer que cada actividad sea editable, excepto los consejos
   const liElements = dayContainer.querySelectorAll('li');
   liElements.forEach((li, index) => {
-    const activityContainer = document.createElement('div');
-    activityContainer.className = 'activity-container';
-    activityContainer.innerHTML = li.outerHTML + `
-      <div class="activity-controls">
-        <button class="activity-edit-btn" onclick="editarActividad(${numDia}, ${index})">
-          <i class="fas fa-pencil-alt"></i>
-        </button>
-        <button class="activity-regenerate-btn" onclick="regenerarActividad(${numDia}, ${index})">
-          <i class="fas fa-sync-alt"></i>
-        </button>
-      </div>
-    `;
-    li.parentNode.replaceChild(activityContainer, li);
+    // Verificar si es parte de la sección de consejos
+    const esPadreDeConsejos = li.parentNode.previousElementSibling && 
+                         li.parentNode.previousElementSibling.classList.contains('tips-header');
+    const esConsejos = li.textContent.includes('CONSEJOS DEL DÍA') || esPadreDeConsejos;
+    
+    if (esConsejos) {
+      // Para consejos, solo añadimos un contenedor sin controles
+      const activityContainer = document.createElement('div');
+      activityContainer.className = 'activity-container consejos-container';
+      activityContainer.innerHTML = li.outerHTML;
+      li.parentNode.replaceChild(activityContainer, li);
+    } else {
+      // Para actividades normales, añadimos los controles de edición y regeneración
+      const activityContainer = document.createElement('div');
+      activityContainer.className = 'activity-container';
+      activityContainer.innerHTML = li.outerHTML + `
+        <div class="activity-controls">
+          <button class="activity-edit-btn" onclick="editarActividad(${numDia}, ${index})">
+            <i class="fas fa-pencil-alt"></i>
+          </button>
+          <button class="activity-regenerate-btn" onclick="regenerarActividad(${numDia}, ${index})">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+      `;
+      li.parentNode.replaceChild(activityContainer, li);
+    }
   });
+  
+  // También protegemos la sección completa de consejos
+  const tipsHeader = dayContainer.querySelector('.tips-header');
+  if (tipsHeader) {
+    // Añadir una clase para identificar la sección de consejos
+    const tipsSection = tipsHeader.parentNode;
+    tipsSection.classList.add('consejos-section');
+    
+    // Eliminar cualquier botón de regeneración dentro de esta sección
+    const regenerateButtons = tipsSection.querySelectorAll('.activity-regenerate-btn');
+    regenerateButtons.forEach(btn => btn.remove());
+  }
 }
 
 // Mejorar la función de procesamiento de texto para destacar URLs y reservas
@@ -1293,83 +1322,140 @@ function crearTarjetaDia(titulo, contenido) {
   return diaCard;
 }
 
-// Función para regenerar un día específico
-async function regenerarDia(diaCard) {
-  const apiKey = localStorage.getItem('apiKey');
-  if (!apiKey) {
-    showNotification("Necesitas configurar tu API Key para regenerar días.", true);
+// Función para regenerar un día específico - Corregir la implementación
+function regenerarDia(numDia) {
+  // Verificar si tenemos suficientes créditos
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  
+  // Si no es modo desarrollo, no tiene créditos y no usa su propia key, mostrar el modal
+  if (!IS_DEV_MODE && credits <= 0 && !usingOwnKey) {
+    openCreditsModal();
     return;
   }
   
-  const destino = document.getElementById("destino").value;
-  const numDia = titulo.match(/\d+/)[0];
+  // Obtener información del itinerario actual
+  const fullItinerary = localStorage.getItem('currentFullItinerary');
+  const destino = localStorage.getItem('currentDestination') || document.getElementById('destino').value;
   const intereses = obtenerInteresesSeleccionados();
-  const presupuesto = document.getElementById("presupuesto").value;
+  const presupuesto = document.getElementById('presupuesto').value;
   
-  // Mostrar indicador de carga en la tarjeta
-  const contenidoDiv = diaCard.querySelector('.day-card-content');
-  const contenidoOriginal = contenidoDiv.innerHTML;
-  contenidoDiv.innerHTML = '<div class="card-loading"><div class="spinner"></div><span>Regenerando día...</span></div>';
+  // Mostrar cargando solo para ese día
+  const daySection = document.getElementById(`day-${numDia}`);
+  if (!daySection) {
+    console.error(`No se encontró la sección del día ${numDia}`);
+    return;
+  }
   
-  // Deshabilitar botones durante la regeneración
-  const botones = diaCard.querySelectorAll('.day-action-btn');
-  botones.forEach(btn => btn.disabled = true);
+  const dayContentOriginal = daySection.querySelector('.day-content').innerHTML;
+  daySection.querySelector('.day-content').innerHTML = `
+    <div class="day-loading">
+      <div class="spinner"></div>
+      <span>Regenerando el día ${numDia}...</span>
+    </div>
+  `;
   
-  // Prompt mejorado para regenerar un día
-  const promptDia = `Regenera el Día ${numDia} para el itinerario de viaje a ${destino}.
-
-Requisitos específicos:
-1. Incluye actividades para mañana, tarde y noche con horarios específicos.
-2. Para cada lugar recomendado, incluye el sitio web oficial entre paréntesis así: "Museo del Prado (https://www.museodelprado.es)"
-3. Verifica y menciona los horarios de apertura actuales para cada atracción.
-4. Indica claramente cuando un lugar requiere reserva previa con el texto "[RESERVAR]" antes del nombre.
-5. Incluye al final una sección llamada "CONSEJOS DEL DÍA" con 2-3 recomendaciones prácticas.
-6. Usa formato enriquecido: negritas para nombres de lugares, cursiva para descripciones breves.
-7. Considera estos intereses: ${intereses.join(', ')}.
-8. Presupuesto: ${presupuesto}.
-
-Para cada actividad, proporciona una breve descripción, horario aproximado y ubicación.`;
+  // Preparar prompt específico para este día
+  let systemPrompt = "Eres un EXPERTO EN PLANIFICACIÓN DE VIAJES. Tu tarea es regenerar SOLAMENTE UN DÍA ESPECÍFICO de un itinerario existente. ";
+  systemPrompt += "Mantén el mismo estilo, nivel de detalle y formato que en el ejemplo, pero con nuevas actividades y lugares.\n\n";
+  systemPrompt += "REGLAS OBLIGATORIAS:\n";
+  systemPrompt += "1. Incluye URLs reales para cada lugar/atracción mencionado.\n";
+  systemPrompt += "2. Marca con [RESERVAR] los lugares donde sea necesario reservar.\n";
+  systemPrompt += "3. Especifica el medio de transporte entre actividades.\n";
+  systemPrompt += "4. Incluye una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas.\n";
+  systemPrompt += "5. IMPORTANTE: Genera ÚNICAMENTE el contenido para este día, sin modificar los demás días.";
   
-  try {
-    const result = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+  let promptText = `Regenera SOLO el Día ${numDia} del itinerario para mi viaje a ${destino}.`;
+  promptText += `\n\nMantén el mismo estilo y formato, pero sugiere actividades y lugares diferentes para este día en particular.`;
+  promptText += `\n\nMantén exactamente la misma sección "CONSEJOS DEL DÍA" que aparece en el itinerario original.`;
+  
+  // Simular o hacer la petición real
+  if (IS_DEV_MODE) {
+    setTimeout(() => {
+      // Generar un día de prueba
+      const nuevoDia = generarDiaPrueba(numDia, destino);
+      
+      // Extraer la sección de consejos original
+      const originalTipsMatch = dayContentOriginal.match(/<h3 class="tips-header">[\s\S]*?<\/ul>/);
+      const originalTipsSection = originalTipsMatch ? originalTipsMatch[0] : '';
+      
+      // Si encontramos consejos, reemplazar la sección en el nuevo contenido
+      let contenidoFinal = nuevoDia;
+      if (originalTipsSection) {
+        contenidoFinal = nuevoDia.replace(/### CONSEJOS DEL DÍA[\s\S]*?(?=##|$)/, 
+          `### CONSEJOS DEL DÍA\n${originalTipsSection}\n\n`);
+      }
+      
+      // Actualizar el HTML
+      daySection.querySelector('.day-content').innerHTML = procesarTextoMarkdown(contenidoFinal);
+      
+      // Re-aplicar la protección a la sección de consejos
+      const tipsHeader = daySection.querySelector('.tips-header');
+      if (tipsHeader) {
+        const tipsSection = tipsHeader.parentNode;
+        tipsSection.classList.add('consejos-section');
+      }
+      
+    }, 1500);
+  } else {
+    // Hacer la solicitud real a la API
+    fetch('/api/generate', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          { 
-            role: "system", 
-            content: "Eres un planificador de viajes experto. Genera itinerarios detallados y realistas." 
-          },
-          { role: "user", content: promptDia }
-        ],
-        temperature: 0.7
+        promptData: promptText,
+        systemPrompt: systemPrompt
       })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.choices && data.choices[0]) {
+        let nuevoContenido = data.choices[0].message.content;
+        
+        // Extraer la sección de consejos original
+        const originalTipsMatch = dayContentOriginal.match(/<h3 class="tips-header">[\s\S]*?<\/ul>/);
+        const originalTipsSection = originalTipsMatch ? originalTipsMatch[0] : '';
+        
+        // Si encontramos consejos, reemplazar la sección en el nuevo contenido
+        if (originalTipsSection) {
+          const tipsRegex = /<h3 class="tips-header">[\s\S]*?<\/ul>/;
+          nuevoContenido = nuevoContenido.replace(tipsRegex, originalTipsSection);
+        }
+        
+        // Actualizar el HTML
+        daySection.querySelector('.day-content').innerHTML = procesarTextoMarkdown(nuevoContenido);
+        
+        // Re-aplicar la protección a la sección de consejos
+        const tipsHeader = daySection.querySelector('.tips-header');
+        if (tipsHeader) {
+          const tipsSection = tipsHeader.parentNode;
+          tipsSection.classList.add('consejos-section');
+        }
+        
+        // Descontar crédito si corresponde
+        const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+        if (!usingOwnKey) {
+          const credits = parseInt(localStorage.getItem('credits') || '0');
+          const newCredits = credits - 1;
+          localStorage.setItem('credits', newCredits.toString());
+          updateCreditsDisplay();
+          
+          if (newCredits <= 1) {
+            showCreditRemainingNotification(newCredits);
+          }
+        }
+      } else {
+        daySection.querySelector('.day-content').innerHTML = dayContentOriginal;
+        showNotification("Error regenerando día: " + (data.error?.message || "Intenta nuevamente"), true);
+      }
+    })
+    .catch(error => {
+      console.error("Error regenerando día:", error);
+      daySection.querySelector('.day-content').innerHTML = dayContentOriginal;
+      showNotification("Error de conexión: " + error.message, true);
     });
-    
-    const data = await result.json();
-    
-    if (data?.choices && data.choices[0]?.message?.content) {
-      // Actualizar el contenido de la tarjeta con enlaces procesados
-      const nuevoContenido = data.choices[0].message.content.replace(/\n/g, "<br>");
-      
-      // Procesar enlaces y otros formatos
-      const contenidoProcesado = procesarTextoConEnlaces(nuevoContenido);
-      contenidoDiv.innerHTML = contenidoProcesado;
-    } else {
-      // Restaurar contenido original en caso de error
-      contenidoDiv.innerHTML = contenidoOriginal;
-      showNotification("Error al regenerar el día: " + (data.error?.message || "Intenta de nuevo"), true);
-    }
-  } catch (error) {
-    contenidoDiv.innerHTML = contenidoOriginal;
-    showNotification("Error de conexión: " + error.message, true);
-  } finally {
-    // Reactivar botones
-    botones.forEach(btn => btn.disabled = false);
   }
 }
 
@@ -1478,101 +1564,39 @@ function obtenerInteresesSeleccionados() {
 
 // Función para configurar la funcionalidad del sidebar
 function setupSidebarToggle() {
-  const sidebarToggleBtn = document.getElementById('sidebar-toggle');
-  const closeSidebarBtn = document.getElementById('close-sidebar');
-  const sidebar = document.getElementById('filters-sidebar');
-  const toggleSidebarHeaderBtn = document.getElementById('toggle-sidebar-btn');
+  // Obtener la referencia al botón toggle correcto
+  const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
   const appLayout = document.querySelector('.app-layout');
+  
+  if (!toggleSidebarBtn) {
+    console.error("No se encontró el botón toggle-sidebar-btn");
+    return;
+  }
   
   // Función para alternar el sidebar
   function toggleSidebar() {
+    console.log("Toggle sidebar clicked"); // Para depuración
     appLayout.classList.toggle('sidebar-collapsed');
-    
-    // En dispositivos móviles, asegurarse de que se vea el contenido
-    if (window.innerWidth <= 768 && appLayout.classList.contains('sidebar-collapsed')) {
-      // Desplazarse al contenido cuando se cierra el sidebar en móvil
-      const mainContent = document.querySelector('.main-content');
-      mainContent.scrollIntoView({ behavior: 'smooth' });
-    }
     
     // Guardar preferencia del usuario
     const isSidebarCollapsed = appLayout.classList.contains('sidebar-collapsed');
     localStorage.setItem('sidebarCollapsed', isSidebarCollapsed);
     
     // Cambiar el ícono según estado
-    const toggleIcon = toggleSidebarHeaderBtn.querySelector('i');
+    const toggleIcon = toggleSidebarBtn.querySelector('i');
     if (toggleIcon) {
       toggleIcon.className = isSidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     }
   }
   
-  // Gestión del botón flotante (móvil)
-  if (sidebarToggleBtn) {
-    sidebarToggleBtn.addEventListener('click', function(event) {
-      sidebar.classList.add('open');
-      event.stopPropagation();
-    });
-  }
-  
-  // Gestión del botón en el header (escritorio)
-  if (toggleSidebarHeaderBtn) {
-    toggleSidebarHeaderBtn.addEventListener('click', function(event) {
-      if (window.innerWidth <= 992) {
-        sidebar.classList.add('open');
-      } else {
-        toggleSidebar();
-      }
-      event.stopPropagation();
-    });
-  }
-  
-  // Cerrar sidebar con el botón de cerrar
-  if (closeSidebarBtn) {
-    closeSidebarBtn.addEventListener('click', function() {
-      sidebar.classList.remove('open');
-    });
-  }
-  
-  // Mejorar la gestión de clics fuera del sidebar
-  document.addEventListener('click', function(event) {
-    if (window.innerWidth <= 992) {
-      const isClickInside = sidebar.contains(event.target) || 
-                         (sidebarToggleBtn && sidebarToggleBtn.contains(event.target)) ||
-                         (toggleSidebarHeaderBtn && toggleSidebarHeaderBtn.contains(event.target));
-      
-      if (sidebar.classList.contains('open') && !isClickInside) {
-        sidebar.classList.remove('open');
-      }
-    }
+  // Añadir event listener al botón de manera explícita
+  toggleSidebarBtn.addEventListener('click', function(event) {
+    console.log("Botón toggle clickeado");
+    toggleSidebar();
+    event.stopPropagation(); // Prevenir que se propague
   });
   
-  // Ajustar al cambiar tamaño de ventana
-  window.addEventListener('resize', function() {
-    // Actualizar el icono del botón según tamaño de pantalla y estado
-    if (toggleSidebarHeaderBtn) {
-      const icon = toggleSidebarHeaderBtn.querySelector('i');
-      if (window.innerWidth > 992) {
-        if (appLayout.classList.contains('sidebar-collapsed')) {
-          icon.className = 'fas fa-bars';
-        } else {
-          icon.className = 'fas fa-times';
-        }
-      } else {
-        icon.className = 'fas fa-bars';
-        sidebar.classList.remove('open'); // Cerrar en cambios a móvil
-      }
-    }
-  });
-  
-  // Inicializar icono según estado inicial
-  if (toggleSidebarHeaderBtn) {
-    const icon = toggleSidebarHeaderBtn.querySelector('i');
-    if (appLayout.classList.contains('sidebar-collapsed')) {
-      icon.className = 'fas fa-bars';
-    } else {
-      icon.className = 'fas fa-times';
-    }
-  }
+  console.log("Event listener añadido al botón toggle-sidebar-btn");
 }
 
 // Mejorar la función para mostrar/ocultar el estado vacío

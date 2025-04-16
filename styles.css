@@ -118,21 +118,22 @@ body {
   transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
-/* Botón para mostrar/ocultar sidebar en la cabecera */
+/* Estilos para el botón de toggle dentro del sidebar */
 .toggle-sidebar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
+  position: static;
+  width: 36px;
+  height: 36px;
   background-color: var(--secondary-bg);
   border-radius: 50%;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
-  border: none;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
   color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-right: 15px;
-  z-index: 100;
+  z-index: 110;
 }
 
 .toggle-sidebar-btn:hover {
@@ -144,9 +145,22 @@ body {
   transform: scale(0.95);
 }
 
-.toggle-sidebar-btn i {
-  font-size: 1.2rem;
-  transition: transform 0.3s;
+/* Hacer que el sidebar-header use flexbox para alinear los elementos correctamente */
+.sidebar-header {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.sidebar-header h2 {
+  margin-right: auto; /* Esto empuja los botones hacia la derecha */
+}
+
+/* Ocultar el otro botón toggle que está fuera del sidebar */
+.sidebar-toggle {
+  display: none !important;
 }
 
 /* Contenido principal (se ajusta al colapsar sidebar) */
@@ -171,7 +185,7 @@ body {
 .header-left {
   display: flex;
   align-items: center;
-  padding-left: 60px;
+  padding-left: 15px;
 }
 
 /* Estado vacío - Mensaje cuando no hay itinerario */
@@ -2245,7 +2259,7 @@ div:not(.interest-checkbox) > .interests-grid {
 .sidebar-toggle {
   position: fixed;
   top: 15px;
-  left: 15px;
+  right: 15px;
   z-index: 200;
   background-color: var(--primary-color);
   color: white;
@@ -2283,6 +2297,12 @@ div:not(.interest-checkbox) > .interests-grid {
   display: block;
 }
 
+/* Asegurarse de que el botón siga siendo visible cuando el sidebar está colapsado */
+.sidebar-collapsed .filters-sidebar .toggle-sidebar-btn {
+  right: -18px;
+  z-index: 200;
+}
+
 /* Ajustes específicos para móviles */
 @media (max-width: 768px) {
   .filters-sidebar {
@@ -2302,7 +2322,7 @@ div:not(.interest-checkbox) > .interests-grid {
   /* Asegurar que el botón es muy visible en móviles */
   .sidebar-toggle {
     top: 10px;
-    left: 10px;
+    right: 10px;
     width: 44px;
     height: 44px;
   }
@@ -2351,10 +2371,36 @@ div:not(.interest-checkbox) > .interests-grid {
   }
   
   .header-left {
-    padding-left: 60px;
+    padding-left: 15px;
   }
   
   .logo h1 {
     font-size: 1.2rem;
   }
+}
+
+/* Estilos para la sección de consejos que no se puede regenerar */
+.consejos-container {
+  background-color: rgba(243, 156, 18, 0.05);
+  border-left: 3px solid #f39c12;
+  padding-left: 15px !important;
+}
+
+.consejos-section {
+  position: relative;
+}
+
+.consejos-section::before {
+  content: "• Esta sección no puede regenerarse";
+  display: block;
+  font-size: 0.8rem;
+  color: #f39c12;
+  font-style: italic;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}
+
+/* Asegurarse de que los botones de regeneración no aparezcan en esta sección */
+.consejos-container .activity-regenerate-btn {
+  display: none !important;
 } 
