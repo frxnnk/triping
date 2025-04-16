@@ -23,6 +23,23 @@ const languageSwitchBtn = document.getElementById('language-switch-btn');
 const languageModal = document.getElementById('language-modal');
 const languageModalClose = document.getElementById('language-modal-close');
 const languageOptions = document.querySelectorAll('.language-option');
+const creditDisplay = document.getElementById('credit-display');
+const creditsCount = document.getElementById('credits-count');
+const buyCreditsBtn = document.getElementById('buy-credits-btn');
+const creditsModal = document.getElementById('credits-modal');
+const creditsModalClose = document.getElementById('credits-modal-close');
+const useOwnKeyBtn = document.getElementById('use-own-key-btn');
+const buyPackageBtns = document.querySelectorAll('.buy-package-btn');
+
+// Constante para la clave de encriptación (puedes cambiarla para mayor seguridad)
+const ENCRYPTION_KEY = "triping_secure_6789";
+
+// En la parte superior del script, después de las constantes
+// Añadir una API key pre-encriptada (esto es solo para demostración)
+const DEFAULT_ENCRYPTED_API_KEY = "VkN1REZ0ZGY4ckJ6OHliU1J1WVVEcVI0OEZ3RUVlUVlESWs="; // Ejemplo encriptado
+
+// Añade esta constante al principio del archivo script.js
+const IS_DEV_MODE = true; // Cambia a false para producción
 
 // Datos de continentes y países
 const continentes = {
@@ -114,7 +131,26 @@ const translations = {
     "transport_metro": "Metro",
     "transport_bike": "Bici",
     "transport_plane": "Avión",
-    "transport_boat": "Barco"
+    "transport_boat": "Barco",
+    
+    // Sistema de créditos
+    "credits_count": "créditos",
+    "buy_credits": "Comprar",
+    "credits_limit_title": "¡Has alcanzado el límite de itinerarios gratuitos!",
+    "credits_limit_message": "Has utilizado tus 3 itinerarios gratuitos. Para continuar generando itinerarios personalizados, tienes dos opciones:",
+    "use_own_key_title": "Usa tu propia API Key",
+    "use_own_key_description": "Obtén una API key gratuita de OpenAI y úsala para generar itinerarios ilimitados sin costo adicional.",
+    "get_api_key": "Obtener API Key",
+    "configure_api_key": "Configurar mi API Key",
+    "buy_credits_title": "Compra créditos",
+    "buy_credits_description": "Adquiere paquetes de créditos para seguir usando el servicio sin necesidad de obtener tu propia API key.",
+    "coming_soon": "Disponible próximamente",
+    "coming_soon_label": "Próximamente",
+    "available_soon": "Disponible pronto",
+    "best_value": "Mejor valor",
+    "api_key_error": "Error en la configuración de la API Key. Por favor, introduce tu propia API Key en la configuración.",
+    "credits_remaining_one": "¡Te queda 1 crédito! Considera comprar más o usar tu propia API key.",
+    "credits_remaining_multiple": "¡Te quedan {count} créditos! Considera comprar más o usar tu propia API key."
   },
   "en": {
     "app_title": "Itinerary Generator",
@@ -166,9 +202,311 @@ const translations = {
     "transport_metro": "Metro",
     "transport_bike": "Bike",
     "transport_plane": "Plane",
-    "transport_boat": "Boat"
+    "transport_boat": "Boat",
+    
+    // Sistema de créditos
+    "credits_count": "credits",
+    "buy_credits": "Buy",
+    "credits_limit_title": "You've reached the free itinerary limit!",
+    "credits_limit_message": "You've used your 3 free itineraries. To continue generating personalized itineraries, you have two options:",
+    "use_own_key_title": "Use your own API Key",
+    "use_own_key_description": "Get a free API key from OpenAI and use it to generate unlimited itineraries at no additional cost.",
+    "get_api_key": "Get API Key",
+    "configure_api_key": "Configure my API Key",
+    "buy_credits_title": "Buy credits",
+    "buy_credits_description": "Purchase credit packages to continue using the service without needing to get your own API key.",
+    "coming_soon": "Coming soon",
+    "coming_soon_label": "Coming soon",
+    "available_soon": "Available soon",
+    "best_value": "Best value",
+    "api_key_error": "API Key configuration error. Please enter your own API Key in the settings.",
+    "credits_remaining_one": "You have 1 credit left! Consider buying more or using your own API key.",
+    "credits_remaining_multiple": "You have {count} credits left! Consider buying more or using your own API key."
   },
-  // Puedes agregar más idiomas aquí: fr, de, it, pt
+  "fr": {
+    "app_title": "Générateur d'itinéraires",
+    "intro_text": "Créez un itinéraire personnalisé pour votre prochain voyage en quelques secondes. Spécifiez votre destination, dates et préférences.",
+    "travel_details": "Détails du voyage",
+    "destination": "Destination:",
+    "destination_placeholder": "Recherchez des pays ou des continents...",
+    "destination_help": "Vous pouvez sélectionner plusieurs pays ou continents",
+    "start_date": "Date de départ:",
+    "end_date": "Date de retour:",
+    "accommodation": "Logement (facultatif):",
+    "accommodation_placeholder": "Nom/emplacement de votre hôtel",
+    "interests": "Intérêts",
+    "interests_selected": "intérêts sélectionnés",
+    "existing_bookings": "Logements et réservations confirmés:",
+    "existing_bookings_placeholder": "Spécifiez les hôtels, transferts ou réservations que vous avez déjà confirmés (Ex: 'Hôtel Marriott à Madrid du 5 au 8 juin', 'Vol à Barcelone le 9', 'Réservation au restaurant El Paraguas le 6 à 20:00')",
+    "existing_bookings_help": "Cette information sera intégrée dans votre itinéraire. Incluez les dates et les heures si possible.",
+    "transport_preferred": "Moyens de transport préférés:",
+    "preferences": "Préférences",
+    "budget": "Budget:",
+    "budget_low": "Économique",
+    "budget_medium": "Moyen",
+    "budget_high": "Premium",
+    "pace": "Temps de voyage:",
+    "pace_slow": "Relaxé",
+    "pace_medium": "Modéré",
+    "pace_fast": "Intense",
+    "additional_instructions": "Instructions supplémentaires:",
+    "additional_placeholder": "Mentionnez des préférences spéciales, restrictions alimentaires, besoins d'accessibilité, etc.",
+    "generate_btn": "Créer mon itinéraire",
+    "start_adventure": "Démarrez votre aventure!",
+    "start_adventure_text": "Configurez les détails de votre voyage dans le panneau de gauche et cliquez sur \"Créer mon itinéraire\" pour générer un plan personnalisé pour votre prochain voyage.",
+    "your_itinerary": "Votre itinéraire personnalisé:",
+    "copy_btn": "Copier",
+    "print_btn": "Imprimer",
+    "pdf_btn": "Enregistrer en PDF",
+    "loading_text": "Génération de votre itinéraire personnalisé... Cela peut prendre jusqu'à une minute.",
+    "select_language": "Sélectionnez une langue",
+    "settings": "Paramètres",
+    "dark_mode": "Mode sombre",
+    "language": "Langue:",
+    "prompt_template": "Modèle de prompt:",
+    "save_settings": "Enregistrer les paramètres",
+    "filters": "Filtres",
+    "transport_walking": "À pied",
+    "transport_car": "Voiture",
+    "transport_bus": "Bus",
+    "transport_train": "Train",
+    "transport_metro": "Métro",
+    "transport_bike": "Vélo",
+    "transport_plane": "Avion",
+    "transport_boat": "Bateau",
+    
+    // Sistema de créditos
+    "credits_count": "crédits",
+    "buy_credits": "Acheter",
+    "credits_limit_title": "Vous avez atteint la limite d'itinéraires gratuits !",
+    "credits_limit_message": "Vous avez utilisé vos 3 itinéraires gratuits. Pour continuer à générer des itinéraires personnalisés, vous avez deux options :",
+    "use_own_key_title": "Utilisez votre propre clé API",
+    "use_own_key_description": "Obtenez une clé API gratuite d'OpenAI et utilisez-la pour générer des itinéraires illimités sans frais supplémentaires.",
+    "get_api_key": "Obtenir une clé API",
+    "configure_api_key": "Configurer ma clé API",
+    "buy_credits_title": "Acheter des crédits",
+    "buy_credits_description": "Achetez des forfaits de crédits pour continuer à utiliser le service sans avoir besoin d'obtenir votre propre clé API.",
+    "coming_soon": "Bientôt disponible",
+    "coming_soon_label": "Bientôt",
+    "available_soon": "Disponible bientôt",
+    "best_value": "Meilleure offre",
+    "api_key_error": "Erreur de configuration de la clé API. Veuillez saisir votre propre clé API dans les paramètres.",
+    "credits_remaining_one": "Il vous reste 1 crédit ! Envisagez d'en acheter plus ou d'utiliser votre propre clé API.",
+    "credits_remaining_multiple": "Il vous reste {count} crédits ! Envisagez d'en acheter plus ou d'utiliser votre propre clé API."
+  },
+  "de": {
+    "app_title": "Reiseplaner",
+    "intro_text": "Erstellen Sie ein persönliches Reiseitinerar für Ihren nächsten Trip in Sekunden. Geben Sie Ihren Zielort, Ihr Reisetag und Ihre Präferenzen an.",
+    "travel_details": "Reiseinformationen",
+    "destination": "Ziel:",
+    "destination_placeholder": "Suchen Sie Länder oder Kontinente...",
+    "destination_help": "Sie können mehrere Länder oder Kontinente auswählen",
+    "start_date": "Startdatum:",
+    "end_date": "Rückkehrdatum:",
+    "accommodation": "Unterkunft (optional):",
+    "accommodation_placeholder": "Name oder Adresse Ihres Hotels",
+    "interests": "Interessen",
+    "interests_selected": "ausgewählte Interessen",
+    "existing_bookings": "Bestätigte Unterkünfte und Reservierungen:",
+    "existing_bookings_placeholder": "Geben Sie die Namen der Hotels, Transfer- oder Reisepassnummern, die Sie bereits bestätigt haben (z.B.: 'Hotel Marriott in Madrid vom 5.-8. Juni', 'Flug nach Barcelona am 9.', 'Reservation bei El Paraguas Restaurant am 6. um 20:00 Uhr')",
+    "existing_bookings_help": "Diese Informationen werden in Ihr Reiseitinerar integriert. Bitte geben Sie Datum und Uhrzeit an, wenn möglich.",
+    "transport_preferred": "Bevorzugte Transportmittel:",
+    "preferences": "Präferenzen",
+    "budget": "Budget:",
+    "budget_low": "Budget",
+    "budget_medium": "Standard",
+    "budget_high": "Premium",
+    "pace": "Reisezeit:",
+    "pace_slow": "Entspannt",
+    "pace_medium": "Gemäßigt",
+    "pace_fast": "Intensiv",
+    "additional_instructions": "Zusätzliche Anweisungen:",
+    "additional_placeholder": "Nennen Sie spezielle Präferenzen, spezielle Ernährungsbeschränkungen, barrierefreie Bedürfnisse, etc.",
+    "generate_btn": "Mein Reiseitinerar erstellen",
+    "start_adventure": "Starten Sie Ihre Reise!",
+    "start_adventure_text": "Konfigurieren Sie die Details Ihrer Reise im linken Bereich und klicken Sie auf \"Mein Reiseitinerar erstellen\", um ein personalisiertes Plan für Ihren nächsten Trip zu erstellen.",
+    "your_itinerary": "Ihr persönliches Reiseitinerar:",
+    "copy_btn": "Kopieren",
+    "print_btn": "Drucken",
+    "pdf_btn": "Als PDF speichern",
+    "loading_text": "Erstellung Ihres personalisierten Reiseitinerars... Dies kann bis zu einer Minute dauern.",
+    "select_language": "Wählen Sie eine Sprache",
+    "settings": "Einstellungen",
+    "dark_mode": "Dunkler Modus",
+    "language": "Sprache:",
+    "prompt_template": "Prompt-Vorlage:",
+    "save_settings": "Einstellungen speichern",
+    "filters": "Filter",
+    "transport_walking": "Gehen",
+    "transport_car": "Auto",
+    "transport_bus": "Bus",
+    "transport_train": "Zug",
+    "transport_metro": "Metro",
+    "transport_bike": "Fahrrad",
+    "transport_plane": "Flugzeug",
+    "transport_boat": "Boot",
+    
+    // Sistema de créditos
+    "credits_count": "Guthaben",
+    "buy_credits": "Kaufen",
+    "credits_limit_title": "Sie haben das Limit für kostenlose Reiserouten erreicht!",
+    "credits_limit_message": "Sie haben Ihre 3 kostenlosen Reiserouten aufgebraucht. Um weiterhin personalisierte Reiserouten zu erstellen, haben Sie zwei Möglichkeiten:",
+    "use_own_key_title": "Verwenden Sie Ihren eigenen API-Schlüssel",
+    "use_own_key_description": "Holen Sie sich einen kostenlosen API-Schlüssel von OpenAI und nutzen Sie ihn, um unbegrenzt Reiserouten ohne zusätzliche Kosten zu erstellen.",
+    "get_api_key": "API-Schlüssel erhalten",
+    "configure_api_key": "Meinen API-Schlüssel konfigurieren",
+    "buy_credits_title": "Guthaben kaufen",
+    "buy_credits_description": "Kaufen Sie Guthabenpakete, um den Service weiterhin zu nutzen, ohne einen eigenen API-Schlüssel zu benötigen.",
+    "coming_soon": "Demnächst verfügbar",
+    "coming_soon_label": "Demnächst",
+    "available_soon": "Bald verfügbar",
+    "best_value": "Bestes Angebot",
+    "api_key_error": "Fehler bei der API-Schlüsselkonfiguration. Bitte geben Sie Ihren eigenen API-Schlüssel in den Einstellungen ein.",
+    "credits_remaining_one": "Sie haben noch 1 Guthaben übrig! Erwägen Sie, mehr zu kaufen oder Ihren eigenen API-Schlüssel zu verwenden.",
+    "credits_remaining_multiple": "Sie haben noch {count} Guthaben übrig! Erwägen Sie, mehr zu kaufen oder Ihren eigenen API-Schlüssel zu verwenden."
+  },
+  "it": {
+    "app_title": "Pianificatore di viaggio",
+    "intro_text": "Crea un piano di viaggio personalizzato per il tuo prossimo viaggio in pochi secondi. Specifica il tuo destinazione, le date e le preferenze.",
+    "travel_details": "Dettagli del viaggio",
+    "destination": "Destinazione:",
+    "destination_placeholder": "Cerca paesi o continenti...",
+    "destination_help": "Puoi selezionare più paesi o continenti",
+    "start_date": "Data di partenza:",
+    "end_date": "Data di ritorno:",
+    "accommodation": "Alloggio (opzionale):",
+    "accommodation_placeholder": "Nome/indirizzo del tuo hotel",
+    "interests": "Interessi",
+    "interests_selected": "interessi selezionati",
+    "existing_bookings": "Alloggi e prenotazioni confermate:",
+    "existing_bookings_placeholder": "Specifica gli hotel, i trasferimenti o le prenotazioni che hai già confermato (Es: 'Hotel Marriott a Madrid dal 5 al 8 giugno', 'Volo a Barcellona il giorno 9', 'Prenotazione al ristorante El Paraguas il 6 alle 20:00')",
+    "existing_bookings_help": "Questa informazione verrà integrata nel tuo itinerario. Includi date e ore se possibile.",
+    "transport_preferred": "Mezzi di trasporto preferiti:",
+    "preferences": "Preferenze",
+    "budget": "Budget:",
+    "budget_low": "Economico",
+    "budget_medium": "Medio",
+    "budget_high": "Premium",
+    "pace": "Tempo del viaggio:",
+    "pace_slow": "Rilassato",
+    "pace_medium": "Moderato",
+    "pace_fast": "Intenso",
+    "additional_instructions": "Istruzioni aggiuntive:",
+    "additional_placeholder": "Menciona preferenze speciali, restrizioni alimentari, esigenze di accessibilità, etc.",
+    "generate_btn": "Crea il mio itinerario",
+    "start_adventure": "Inizia la tua avventura!",
+    "start_adventure_text": "Configura i dettagli del tuo viaggio nel pannello di sinistra e clicca su \"Crea il mio itinerario\" per generare un piano personalizzato per il tuo prossimo viaggio.",
+    "your_itinerary": "Il tuo itinerario personalizzato:",
+    "copy_btn": "Copia",
+    "print_btn": "Stampa",
+    "pdf_btn": "Salva come PDF",
+    "loading_text": "Generazione del tuo itinerario personale... Questo potrebbe richiedere fino a un minuto.",
+    "select_language": "Seleziona una lingua",
+    "settings": "Impostazioni",
+    "dark_mode": "Modalità scura",
+    "language": "Lingua:",
+    "prompt_template": "Modello di prompt:",
+    "save_settings": "Salva impostazioni",
+    "filters": "Filtri",
+    "transport_walking": "A piedi",
+    "transport_car": "Auto",
+    "transport_bus": "Bus",
+    "transport_train": "Treno",
+    "transport_metro": "Metro",
+    "transport_bike": "Bici",
+    "transport_plane": "Aereo",
+    "transport_boat": "Barca",
+    
+    // Sistema di crediti
+    "credits_count": "crediti",
+    "buy_credits": "Acquista",
+    "credits_limit_title": "Hai raggiunto il limite di itinerari gratuiti!",
+    "credits_limit_message": "Hai utilizzato i tuoi 3 itinerari gratuiti. Per continuare a generare itinerari personalizzati, hai due opzioni:",
+    "use_own_key_title": "Usa la tua chiave API",
+    "use_own_key_description": "Ottieni una chiave API gratuita da OpenAI e usala per generare itinerari illimitati senza costi aggiuntivi.",
+    "get_api_key": "Ottieni chiave API",
+    "configure_api_key": "Configura la mia chiave API",
+    "buy_credits_title": "Acquista crediti",
+    "buy_credits_description": "Acquista pacchetti di crediti per continuare a utilizzare il servizio senza dover ottenere la tua chiave API.",
+    "coming_soon": "Disponibile prossimamente",
+    "coming_soon_label": "Prossimamente",
+    "available_soon": "Disponibile presto",
+    "best_value": "Miglior valore",
+    "api_key_error": "Errore nella configurazione della chiave API. Inserisci la tua chiave API nelle impostazioni.",
+    "credits_remaining_one": "Ti rimane 1 credito! Considera di acquistarne altri o di utilizzare la tua chiave API.",
+    "credits_remaining_multiple": "Ti rimangono {count} crediti! Considera di acquistarne altri o di utilizzare la tua chiave API."
+  },
+  "pt": {
+    "app_title": "Gerador de Itinerários",
+    "intro_text": "Crie um itinerário personalizado para o seu próximo viaje em segundos. Especifique seu destino, datas e preferências.",
+    "travel_details": "Detalhes do Viagem",
+    "destination": "Destino:",
+    "destination_placeholder": "Pesquise países ou continentes...",
+    "destination_help": "Você pode selecionar vários países ou continentes",
+    "start_date": "Data de Início:",
+    "end_date": "Data de Término:",
+    "accommodation": "Alojamento (opcional):",
+    "accommodation_placeholder": "Nome/localização do seu hotel",
+    "interests": "Interesses",
+    "interests_selected": "interesses selecionados",
+    "existing_bookings": "Alojamentos e reservas confirmadas:",
+    "existing_bookings_placeholder": "Especifique os hotéis, transferências ou reservas que já possui confirmados (Ex: 'Hotel Marriott em Madrid do dia 5-8 de junho', 'Voo para Barcelona no dia 9', 'Reserva no restaurante El Paraguas no dia 6 às 20:00')",
+    "existing_bookings_help": "Esta informação será integrada no seu itinerário. Inclua datas e horas se possível.",
+    "transport_preferred": "Meios de transporte preferidos:",
+    "preferences": "Preferências",
+    "budget": "Orçamento:",
+    "budget_low": "Orçamento",
+    "budget_medium": "Médio",
+    "budget_high": "Premium",
+    "pace": "Ritmo do viaje:",
+    "pace_slow": "Relajado",
+    "pace_medium": "Moderado",
+    "pace_fast": "Intenso",
+    "additional_instructions": "Instruções adicionais:",
+    "additional_placeholder": "Mencione preferências especiais, restrições alimentares, necessidades de acessibilidade, etc.",
+    "generate_btn": "Criar meu itinerário",
+    "start_adventure": "Inicie sua aventura!",
+    "start_adventure_text": "Configure os detalhes do seu viagem no painel à esquerda e clique em \"Criar meu itinerário\" para gerar um plano personalizado para o seu próximo viagem.",
+    "your_itinerary": "Seu itinerário personalizado:",
+    "copy_btn": "Copiar",
+    "print_btn": "Imprimir",
+    "pdf_btn": "Salvar como PDF",
+    "loading_text": "Gerando seu itinerário personalizado... Isso pode levar até um minuto.",
+    "select_language": "Selecione um idioma",
+    "settings": "Configurações",
+    "dark_mode": "Modo escuro",
+    "language": "Idioma:",
+    "prompt_template": "Modelo de Prompt:",
+    "save_settings": "Salvar configurações",
+    "filters": "Filtros",
+    "transport_walking": "A pé",
+    "transport_car": "Carro",
+    "transport_bus": "Ônibus",
+    "transport_train": "Trem",
+    "transport_metro": "Metro",
+    "transport_bike": "Bicicleta",
+    "transport_plane": "Avião",
+    "transport_boat": "Barco",
+    
+    // Sistema de créditos
+    "credits_count": "créditos",
+    "buy_credits": "Comprar",
+    "credits_limit_title": "Você atingiu o limite de itinerários gratuitos!",
+    "credits_limit_message": "Você usou seus 3 itinerários gratuitos. Para continuar gerando itinerários personalizados, você tem duas opções:",
+    "use_own_key_title": "Use sua própria chave API",
+    "use_own_key_description": "Obtenha uma chave API gratuita da OpenAI e use-a para gerar itinerários ilimitados sem custo adicional.",
+    "get_api_key": "Obter chave API",
+    "configure_api_key": "Configurar minha chave API",
+    "buy_credits_title": "Comprar créditos",
+    "buy_credits_description": "Adquira pacotes de créditos para continuar usando o serviço sem precisar obter sua própria chave API.",
+    "coming_soon": "Disponível em breve",
+    "coming_soon_label": "Em breve",
+    "available_soon": "Disponível em breve",
+    "best_value": "Melhor valor",
+    "api_key_error": "Erro na configuração da chave API. Por favor, insira sua própria chave API nas configurações.",
+    "credits_remaining_one": "Você tem 1 crédito restante! Considere comprar mais ou usar sua própria chave API.",
+    "credits_remaining_multiple": "Você tem {count} créditos restantes! Considere comprar mais ou usar sua própria chave API."
+  }
 };
 
 // También podemos incluir traducciones para cada interés
@@ -203,6 +541,129 @@ const interestTranslations = {
   }
   // Puedes agregar más idiomas aquí
 };
+
+// Función para encriptar la API key antes de almacenarla
+function encryptApiKey(apiKey) {
+  // Implementación simple de encriptación (XOR con la clave)
+  let result = '';
+  for (let i = 0; i < apiKey.length; i++) {
+    result += String.fromCharCode(apiKey.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+  }
+  return btoa(result); // Codificar en base64
+}
+
+// Función para desencriptar la API key
+function decryptApiKey(encryptedKey) {
+  try {
+    const decoded = atob(encryptedKey); // Decodificar base64
+    let result = '';
+    for (let i = 0; i < decoded.length; i++) {
+      result += String.fromCharCode(decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+    }
+    return result;
+  } catch (e) {
+    console.error("Error al desencriptar la API key:", e);
+    return "";
+  }
+}
+
+// Función para inicializar el sistema de créditos
+function initCreditsSystem() {
+  // Verificar si es la primera vez que el usuario visita la página
+  if (localStorage.getItem('credits') === null) {
+    // Configuración inicial: 3 créditos gratuitos
+    localStorage.setItem('credits', '3');
+    localStorage.setItem('usingOwnKey', 'false');
+    localStorage.setItem('freeUsageCount', '0');
+    
+    // Configurar la API key predeterminada encriptada (para usar con los créditos gratuitos)
+    if (!localStorage.getItem('defaultApiKeySet')) {
+      localStorage.setItem('defaultApiKeySet', 'true');
+    }
+  }
+  
+  // Actualizar el contador de créditos en la UI
+  updateCreditsDisplay();
+  
+  // Configurar event listeners para el sistema de créditos
+  buyCreditsBtn.addEventListener('click', openCreditsModal);
+  creditsModalClose.addEventListener('click', closeCreditsModal);
+  useOwnKeyBtn.addEventListener('click', configureOwnApiKey);
+  
+  // Event listeners para los botones de compra de paquetes
+  buyPackageBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const packageElement = this.closest('.credit-package');
+      const credits = packageElement.dataset.credits;
+      const price = packageElement.dataset.price;
+      processCreditPurchase(credits, price);
+    });
+  });
+}
+
+// Función para actualizar el display de créditos
+function updateCreditsDisplay() {
+  const credits = parseInt(localStorage.getItem('credits') || '0');
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+  
+  if (usingOwnKey) {
+    creditsCount.textContent = "∞"; // Símbolo de infinito
+  } else {
+    creditsCount.textContent = credits.toString();
+  }
+}
+
+// Función para abrir el modal de créditos
+function openCreditsModal() {
+  creditsModal.classList.add('open');
+}
+
+// Función para cerrar el modal de créditos
+function closeCreditsModal() {
+  creditsModal.classList.remove('open');
+}
+
+// Función para configurar la propia API key del usuario
+function configureOwnApiKey() {
+  settingsPanel.classList.add('open');
+  overlay.classList.add('open');
+  
+  // Resaltar el campo de API key
+  savedApiKeyInput.focus();
+  savedApiKeyInput.classList.add('highlight-input');
+  
+  // Mostrar un mensaje informativo
+  showNotification("Introduce tu API key de OpenAI para generar itinerarios ilimitados.");
+  
+  // Cerrar el modal de créditos
+  closeCreditsModal();
+  
+  // Después de 2 segundos, quitar el resaltado
+  setTimeout(() => {
+    savedApiKeyInput.classList.remove('highlight-input');
+  }, 2000);
+}
+
+// Función para procesar la compra de créditos
+function processCreditPurchase(creditsAmount, price) {
+  // En una implementación real, aquí se conectaría con un sistema de pagos
+  // Para esta demostración, solo simularemos la compra
+  
+  // Mostrar una confirmación
+  if (confirm(`¿Confirmas la compra de ${creditsAmount} créditos por €${price}?`)) {
+    // Añadir los créditos a la cuenta del usuario
+    const currentCredits = parseInt(localStorage.getItem('credits') || '0');
+    const newCredits = currentCredits + parseInt(creditsAmount);
+    localStorage.setItem('credits', newCredits.toString());
+    
+    // Actualizar el display
+    updateCreditsDisplay();
+    
+    // Cerrar el modal y mostrar notificación
+    closeCreditsModal();
+    showNotification(`¡Compra exitosa! Se han añadido ${creditsAmount} créditos a tu cuenta.`);
+  }
+}
 
 // Inicializar la aplicación cuando el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function() {
@@ -243,6 +704,15 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+  
+  // Configurar específicamente los event listeners de idioma
+  setupLanguageEvents();
+  
+  // Añadir la inicialización del sistema de créditos
+  initCreditsSystem();
+  
+  // Asegurarse de que todos los event listeners estén funcionando
+  reinitializeEventListeners();
 });
 
 // Configuración del panel de ajustes
@@ -307,7 +777,15 @@ function saveSettings() {
   const language = languageSelector.value;
   const customPrompt = promptTemplate.value || DEFAULT_PROMPT;
   
-  localStorage.setItem('apiKey', apiKey);
+  // Verificar si el usuario está usando su propia API key
+  const usingOwnKey = apiKey.trim() !== '';
+  localStorage.setItem('usingOwnKey', usingOwnKey.toString());
+  
+  // Si el usuario proporciona su propia API key, encriptarla
+  if (usingOwnKey) {
+    localStorage.setItem('apiKey', encryptApiKey(apiKey));
+  }
+  
   localStorage.setItem('darkMode', isDarkMode);
   localStorage.setItem('language', language);
   localStorage.setItem('customPrompt', customPrompt);
@@ -321,6 +799,9 @@ function saveSettings() {
   
   closeSettings();
   showNotification('Configuración guardada correctamente');
+  
+  // Actualizar el display de créditos
+  updateCreditsDisplay();
   
   // Aplicar cambios de idioma si es necesario
   applyLanguageChanges(language);
@@ -358,7 +839,12 @@ function applyDarkMode(enable) {
 function loadSettings() {
   // Cargar API key
   const savedApiKey = localStorage.getItem('apiKey') || '';
-  savedApiKeyInput.value = savedApiKey;
+  if (savedApiKey) {
+    // Mostrar asteriscos por seguridad, la key real está encriptada
+    savedApiKeyInput.value = '••••••••••••••••••••••••••••••••';
+  } else {
+    savedApiKeyInput.value = '';
+  }
   
   // Cargar modo oscuro
   const isDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -373,6 +859,9 @@ function loadSettings() {
   // Cargar plantilla de prompt
   const savedPrompt = localStorage.getItem('customPrompt') || DEFAULT_PROMPT;
   promptTemplate.value = savedPrompt;
+  
+  // Inicializar sistema de créditos
+  initCreditsSystem();
   
   // Cargar estado del sidebar (con validación por tamaño de pantalla)
   const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
@@ -407,10 +896,19 @@ function obtenerTransportesSeleccionados() {
 
 // Generar itinerario
 async function generarItinerario() {
+  // Añadir al principio de generarItinerario()
+  console.log("Iniciando generación de itinerario, modo desarrollo:", IS_DEV_MODE);
+  
+  // Añadir antes de la simulación en modo desarrollo
+  console.log("Simulando respuesta en modo desarrollo");
+  
+  // Añadir en modo producción
+  console.log("Enviando solicitud a la API");
+  
   // Al iniciar la generación, ocultar el estado vacío
   showEmptyState(false);
   
-  // Obtener datos del formulario
+  // Obtener datos del formulario - necesario incluso en modo desarrollo
   const destino = document.getElementById('destino').value;
   const fechaInicio = document.getElementById('fechaInicio').value;
   const fechaFin = document.getElementById('fechaFin').value;
@@ -433,15 +931,17 @@ async function generarItinerario() {
     return;
   }
   
-  // Cargar API key desde localStorage
-  const apiKey = localStorage.getItem('apiKey');
-  
-  // Verificar que existe una API key
-  if (!apiKey) {
-    showNotification('Por favor, configura tu API Key de OpenAI en la configuración', true);
-    settingsPanel.classList.add('open');
-    overlay.classList.add('open');
-    return;
+  // En modo desarrollo, saltamos la verificación de créditos
+  if (!IS_DEV_MODE) {
+    // Verificar si el usuario tiene créditos disponibles o usa su propia API key
+    const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+    const credits = parseInt(localStorage.getItem('credits') || '0');
+    
+    // Si el usuario no tiene créditos y no usa su propia API key, mostrar el modal
+    if (credits <= 0 && !usingOwnKey) {
+      openCreditsModal();
+      return;
+    }
   }
   
   // Cargar el prompt personalizado
@@ -476,62 +976,88 @@ async function generarItinerario() {
   }
   
   // Agregar instrucciones específicas sobre URLs y reservas
-  let systemPrompt = "Eres un experto en planificación de viajes. Crea itinerarios detallados y bien organizados. ";
-  systemPrompt += "IMPORTANTE: Incluye URLs (entre paréntesis) para cada atracción, restaurante y sitio importante mencionado. ";
-  systemPrompt += "Marca con [RESERVAR] los lugares donde se necesite o recomiende reservar con anticipación. ";
-  systemPrompt += "Para cada día, incluye una sección 'CONSEJOS DEL DÍA' con recomendaciones prácticas.";
+  let systemPrompt = generarSystemPrompt();
   
   try {
-    // Mostrar indicador de carga (ahora actualizado)
+    // Mostrar indicador de carga
     loadingIndicator.style.display = 'flex';
-    
-    // Ocultar el estado vacío mientras se carga
-    showEmptyState(false);
-    
-    // Ocultar la tarjeta de respuesta mientras se carga
     responseCard.style.display = 'none';
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: promptText
+    let data;
+    
+    if (IS_DEV_MODE) {
+      // Simular respuesta de la API en modo desarrollo
+      console.log("Ejecutando en modo desarrollo");
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simular retraso
+      
+      // Usar nuestro generador de itinerarios de prueba mejorado
+      const itinerarioPrueba = generarItinerarioPrueba(destino, fechaInicio, fechaFin);
+      
+      data = {
+        choices: [{
+          message: {
+            content: itinerarioPrueba
           }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-      })
-    });
+        }]
+      };
+    } else {
+      // Código original para hacer la solicitud real a la API
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          promptData: promptText,
+          systemPrompt: systemPrompt
+        })
+      });
+      
+      data = await response.json();
+    }
     
-    const data = await response.json();
-    
+    // Procesar la respuesta (tanto en modo desarrollo como producción)
     if (data.error) {
-      showNotification(`Error: ${data.error.message}`, true);
+      showNotification(`Error: ${data.error.message || 'Error desconocido'}`, true);
       showEmptyState(true);
     } else if (data.choices && data.choices[0]) {
       const itinerario = data.choices[0].message.content;
       procesarRespuesta(itinerario, destino, fechaInicio, fechaFin);
+      
+      // Si el usuario no está usando su propia API key y no estamos en modo desarrollo, reducir un crédito
+      if (!IS_DEV_MODE) {
+        const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
+        if (!usingOwnKey) {
+          const credits = parseInt(localStorage.getItem('credits') || '0');
+          const newCredits = credits - 1;
+          localStorage.setItem('credits', newCredits.toString());
+          updateCreditsDisplay();
+          
+          // Si quedan pocos créditos, mostrar una notificación
+          if (newCredits <= 1) {
+            showCreditRemainingNotification(newCredits);
+          }
+          
+          // Si era el último crédito gratuito, mostrar el modal de compra
+          if (newCredits === 0) {
+            setTimeout(() => {
+              openCreditsModal();
+            }, 1000);
+          }
+        }
+      }
+      
       // Asegurarse que los botones de acción sean visibles
       actionButtons.style.display = 'flex';
       // Asegurarse que la caja de respuesta sea visible
       responseCard.style.display = 'block';
     } else {
-      showNotification('Error al generar el itinerario', true);
+      showNotification('Error al generar el itinerario: Formato de respuesta inválido', true);
       showEmptyState(true);
     }
   } catch (error) {
-    showNotification(`Error al conectar con la API: ${error.message}`, true);
+    console.error('Error en generarItinerario:', error);
+    showNotification(`Error: ${error.message || 'Error desconocido al generar el itinerario'}`, true);
     showEmptyState(true);
   } finally {
     // Ocultar el indicador de carga
@@ -539,51 +1065,51 @@ async function generarItinerario() {
   }
 }
 
-// Modificar la función procesarRespuesta para restaurar el diseño de tarjetas
+// Función para procesar y mejorar visualmente el itinerario sin usar marked
 function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   // Asegurarse de que el estado vacío esté oculto cuando hay contenido
   showEmptyState(false);
   
-  // Limpiar el contenedor de respuesta
-  responseBox.innerHTML = "";
-  
-  // Crear el encabezado del itinerario
-  const header = document.createElement('div');
-  header.className = 'itinerary-header';
-  header.innerHTML = `
-    <h2>Itinerario para ${destino}</h2>
-    <p>Del ${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
+  // Limpiar el contenedor de respuesta y añadir cabecera
+  responseBox.innerHTML = `
+    <div class="itinerary-header">
+      <h2>Itinerario para ${destino}</h2>
+      <p>Del ${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
+    </div>
   `;
-  responseBox.appendChild(header);
   
-  // Dividir la respuesta en días
-  // Buscamos patrones como "Día 1", "Día 2", etc.
-  const diasPattern = /D[ií]a\s*\d+/gi;
-  const textosDias = respuesta.split(diasPattern);
-  const titulosDias = respuesta.match(diasPattern) || [];
+  // Convertir markdown básico a HTML
+  let html = respuesta
+    // Convertir encabezados
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    // Convertir listas
+    .replace(/^\- (.*$)/gm, '<li>$1</li>')
+    // Convertir URLs entre paréntesis en enlaces
+    .replace(/\(https?:\/\/[^\s\)]+\)/g, url => {
+      const cleanUrl = url.substring(1, url.length - 1);
+      return `(<a href="${cleanUrl}" class="itinerary-link" target="_blank">${cleanUrl}</a>)`;
+    })
+    // Convertir listas en bloques ul
+    .replace(/<li>.*?<\/li>/gs, match => '<ul>' + match + '</ul>')
+    // Eliminar duplicados de ul
+    .replace(/<\/ul>\s*<ul>/g, '');
   
-  // Si no se pudo dividir correctamente, mostramos todo el contenido
-  if (titulosDias.length <= 1) {
-    const contenidoProcesado = procesarTextoConEnlaces(respuesta);
-    const diaContainer = crearTarjetaDia('Itinerario completo', contenidoProcesado);
-    responseBox.appendChild(diaContainer);
-  } else {
-    // Crear contenedor para las tarjetas de días
-    const cardsContainer = document.createElement('div');
-    cardsContainer.className = 'day-cards-container';
-    responseBox.appendChild(cardsContainer);
-    
-    // Crear una tarjeta para cada día encontrado
-    for (let i = 0; i < titulosDias.length; i++) {
-      // El primer split suele devolver contenido vacío o la introducción
-      const contenidoDia = i === 0 ? textosDias[i+1] : textosDias[i];
-      if (!contenidoDia) continue;
-      
-      const contenidoProcesado = procesarTextoConEnlaces(contenidoDia);
-      const diaContainer = crearTarjetaDia(titulosDias[i], contenidoProcesado);
-      cardsContainer.appendChild(diaContainer);
-    }
-  }
+  // Resaltar visualmente las recomendaciones de reserva
+  html = html.replace(/\[RESERVAR\]/g, '<span class="reservation-tag"><i class="fas fa-calendar-check"></i> RESERVAR</span>');
+  
+  // Añadir iconos a los horarios
+  html = html.replace(/(\d{1,2}:\d{2})/g, '<span class="time-tag"><i class="fas fa-clock"></i> $1</span>');
+  
+  // Mejorar visualmente los consejos del día
+  html = html.replace(/<h3>CONSEJOS DEL DÍA<\/h3>/g, '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> CONSEJOS DEL DÍA</h3>');
+  
+  // Añadir clase especial a los transportes
+  html = html.replace(/Transporte: ([^<]+)/g, 'Transporte: <span class="transport-tag"><i class="fas fa-route"></i> $1</span>');
+  
+  // Añadir el contenido procesado
+  responseBox.innerHTML += html;
   
   // Mostrar los botones de acción
   actionButtons.style.display = 'flex';
@@ -1166,6 +1692,108 @@ function applyLanguageChanges(lang) {
   // Botón de filtros (móvil)
   const filtersBtn = document.getElementById('sidebar-toggle');
   if (filtersBtn) filtersBtn.innerHTML = `<i class="fas fa-sliders-h"></i> ${translations[lang].filters}`;
+  
+  // Actualizar textos del sistema de créditos
+  const creditCountElement = document.querySelector('.credit-count span:last-child');
+  if (creditCountElement) {
+    creditCountElement.textContent = translations[lang].credits_count || "créditos";
+  }
+  
+  const buyCreditsTextElement = document.querySelector('#buy-credits-btn');
+  if (buyCreditsTextElement) {
+    const spanElement = buyCreditsTextElement.querySelector('span') || buyCreditsTextElement;
+    if (spanElement && translations[lang].buy_credits) {
+      spanElement.textContent = translations[lang].buy_credits;
+    }
+  }
+  
+  // Modal de créditos
+  const modalTitle = document.querySelector('#credits-modal h3');
+  if (modalTitle) {
+    modalTitle.textContent = translations[lang].credits_limit_title || "¡Has alcanzado el límite de itinerarios gratuitos!";
+  }
+  
+  const modalDesc = document.querySelector('#credits-modal > div > p');
+  if (modalDesc) {
+    modalDesc.textContent = translations[lang].credits_limit_message || "Has utilizado tus 3 itinerarios gratuitos. Para continuar generando itinerarios personalizados, tienes dos opciones:";
+  }
+  
+  // Sección "Usa tu propia API Key"
+  const keyOption = document.querySelector('#credits-modal .api-key-option');
+  if (keyOption) {
+    const keyTitle = keyOption.querySelector('h4');
+    if (keyTitle) {
+      keyTitle.innerHTML = `<i class="fas fa-key"></i> ${translations[lang].use_own_key_title || "Usa tu propia API Key"}`;
+    }
+    
+    const keyDesc = keyOption.querySelector('p');
+    if (keyDesc) {
+      keyDesc.textContent = translations[lang].use_own_key_description || "Obtén una API key gratuita de OpenAI y úsala para generar itinerarios ilimitados sin costo adicional.";
+    }
+    
+    const getKeyBtn = keyOption.querySelector('a.secondary-btn');
+    if (getKeyBtn) {
+      getKeyBtn.textContent = translations[lang].get_api_key || "Obtener API Key";
+    }
+    
+    const configKeyBtn = keyOption.querySelector('#use-own-key-btn');
+    if (configKeyBtn) {
+      configKeyBtn.innerHTML = `<i class="fas fa-key"></i> ${translations[lang].configure_api_key || "Configurar mi API Key"}`;
+    }
+  }
+  
+  // Sección "Compra créditos"
+  const buyCreditOption = document.querySelector('#credits-modal .buy-credits-option');
+  if (buyCreditOption) {
+    const buyTitle = buyCreditOption.querySelector('h4');
+    if (buyTitle) {
+      buyTitle.innerHTML = `<i class="fas fa-ticket-alt"></i> ${translations[lang].buy_credits_title || "Compra créditos"}`;
+    }
+    
+    const buyDesc = buyCreditOption.querySelector('p');
+    if (buyDesc) {
+      buyDesc.textContent = translations[lang].buy_credits_description || "Adquiere paquetes de créditos para seguir usando el servicio sin necesidad de obtener tu propia API key.";
+    }
+    
+    const comingSoonBanner = buyCreditOption.querySelector('.coming-soon-banner');
+    if (comingSoonBanner) {
+      comingSoonBanner.innerHTML = `<i class="fas fa-clock"></i> ${translations[lang].coming_soon || "Disponible próximamente"}`;
+    }
+    
+    // Paquetes de créditos
+    const packages = buyCreditOption.querySelectorAll('.credit-package');
+    packages.forEach(pkg => {
+      const comingSoonLabel = pkg.querySelector('.package-coming-soon');
+      if (comingSoonLabel) {
+        comingSoonLabel.textContent = translations[lang].coming_soon_label || "Próximamente";
+      }
+      
+      const buyBtn = pkg.querySelector('button');
+      if (buyBtn) {
+        buyBtn.textContent = translations[lang].available_soon || "Disponible pronto";
+      }
+    });
+    
+    // Etiqueta "Mejor valor"
+    const bestValueTag = buyCreditOption.querySelector('.package-tag');
+    if (bestValueTag) {
+      bestValueTag.textContent = translations[lang].best_value || "Mejor valor";
+    }
+  }
+}
+
+// Función independiente para mostrar notificaciones de créditos restantes
+function showCreditRemainingNotification(credits) {
+  const currentLang = localStorage.getItem('language') || 'es';
+  let message;
+  
+  if (credits === 1) {
+    message = translations[currentLang].credits_remaining_one || "¡Te queda 1 crédito! Considera comprar más o usar tu propia API key.";
+  } else {
+    message = (translations[currentLang].credits_remaining_multiple || "¡Te quedan {count} créditos! Considera comprar más o usar tu propia API key.").replace('{count}', credits);
+  }
+  
+  showNotification(message);
 }
 
 // Función para guardar el itinerario actual en el historial
@@ -1572,8 +2200,16 @@ function guardarItinerario(itinerario, nombre) {
 
 // Función para cerrar el modal de idioma
 function closeLanguageModal() {
-  languageModal.classList.remove('open');
-  overlay.classList.remove('open');
+  const languageModal = document.getElementById('language-modal');
+  const overlay = document.getElementById('overlay');
+  
+  if (languageModal) {
+    languageModal.classList.remove('open');
+  }
+  
+  if (overlay) {
+    overlay.classList.remove('open');
+  }
 }
 
 // Función para cambiar el idioma
@@ -1582,7 +2218,10 @@ function changeLanguage(lang) {
   localStorage.setItem('language', lang);
   
   // Actualizar el selector en la configuración 
-  languageSelector.value = lang;
+  const languageSelector = document.getElementById('language-selector');
+  if (languageSelector) {
+    languageSelector.value = lang;
+  }
   
   // Aplicar cambios
   applyLanguageChanges(lang);
@@ -1598,4 +2237,248 @@ function changeLanguage(lang) {
   };
   
   showNotification(messages[lang] || 'Idioma cambiado correctamente');
+}
+
+// Asegurarse de que los event listeners para el cambio de idioma estén correctamente inicializados
+function setupLanguageEvents() {
+  // Botón para abrir el modal de idioma
+  const languageSwitchBtn = document.getElementById('language-switch-btn');
+  if (languageSwitchBtn) {
+    languageSwitchBtn.addEventListener('click', function() {
+      const languageModal = document.getElementById('language-modal');
+      const overlay = document.getElementById('overlay');
+      
+      if (languageModal && overlay) {
+        languageModal.classList.add('open');
+        overlay.classList.add('open');
+        
+        // Destacar el idioma actualmente seleccionado
+        const currentLang = localStorage.getItem('language') || 'es';
+        document.querySelectorAll('.language-option').forEach(option => {
+          if (option.dataset.lang === currentLang) {
+            option.classList.add('active');
+          } else {
+            option.classList.remove('active');
+          }
+        });
+      }
+    });
+  }
+  
+  // Botón para cerrar el modal de idioma
+  const languageModalClose = document.getElementById('language-modal-close');
+  if (languageModalClose) {
+    languageModalClose.addEventListener('click', closeLanguageModal);
+  }
+  
+  // Opciones de idioma dentro del modal
+  document.querySelectorAll('.language-option').forEach(option => {
+    option.addEventListener('click', function() {
+      const selectedLang = this.dataset.lang;
+      changeLanguage(selectedLang);
+      closeLanguageModal();
+    });
+  });
+}
+
+// Añadir esta función para reinicializar todos los event listeners clave
+function reinitializeEventListeners() {
+  // Event listeners para botones de acción
+  if (generarBtn) {
+    generarBtn.addEventListener('click', generarItinerario);
+  }
+  
+  if (copiarBtn) {
+    copiarBtn.addEventListener('click', copiarAlPortapapeles);
+  }
+  
+  if (imprimirBtn) {
+    imprimirBtn.addEventListener('click', imprimirItinerario);
+  }
+  
+  if (pdfBtn) {
+    pdfBtn.addEventListener('click', guardarPDF);
+  }
+  
+  // Inicializar búsqueda de destinos
+  const destinoInput = document.getElementById('destino');
+  if (destinoInput) {
+    destinoInput.addEventListener('input', function() {
+      mostrarSugerenciasDestinos(this.value);
+    });
+    
+    destinoInput.addEventListener('focus', function() {
+      mostrarSugerenciasDestinos(this.value);
+    });
+  }
+  
+  // Reinicializar otros event listeners importantes...
+}
+
+// Modificar la función DOMContentLoaded para incluir la reinicialización
+document.addEventListener('DOMContentLoaded', function() {
+  // Cargar configuraciones guardadas
+  loadSettings();
+  
+  // Configurar fechas por defecto
+  setupDefaultDates();
+  
+  // Configurar event listeners
+  setupEventListeners();
+  
+  // Configurar específicamente los event listeners de idioma
+  setupLanguageEvents();
+  
+  // Añadir la inicialización del sistema de créditos
+  initCreditsSystem();
+  
+  // Asegurarse de que todos los event listeners estén funcionando
+  reinitializeEventListeners();
+});
+
+// Asegurar que la función de mostrar sugerencias de destinos esté correctamente definida
+function mostrarSugerenciasDestinos(query) {
+  const destinoInput = document.getElementById('destino');
+  const sugerenciasBox = document.getElementById('sugerencias-destinos');
+  
+  if (!destinoInput || !sugerenciasBox) return;
+  
+  // Limpiar sugerencias anteriores
+  sugerenciasBox.innerHTML = '';
+  
+  if (query.length < 2) {
+    sugerenciasBox.style.display = 'none';
+    return;
+  }
+  
+  // Filtrar sugerencias basadas en la consulta
+  const sugerencias = [];
+  query = query.toLowerCase();
+  
+  // Añadir continentes que coincidan
+  Object.keys(continentes).forEach(continente => {
+    if (continente.toLowerCase().includes(query)) {
+      sugerencias.push({
+        nombre: continente,
+        tipo: 'continente'
+      });
+    }
+  });
+  
+  // Añadir países que coincidan
+  Object.keys(continentes).forEach(continente => {
+    continentes[continente].forEach(pais => {
+      if (pais.toLowerCase().includes(query)) {
+        sugerencias.push({
+          nombre: pais,
+          tipo: 'pais',
+          continente: continente
+        });
+      }
+    });
+  });
+  
+  // Mostrar sugerencias
+  if (sugerencias.length > 0) {
+    sugerenciasBox.style.display = 'block';
+    
+    sugerencias.slice(0, 8).forEach(sugerencia => {
+      const sugerenciaItem = document.createElement('div');
+      sugerenciaItem.className = 'sugerencia-item';
+      
+      const icono = sugerencia.tipo === 'continente' ? 'fas fa-globe-americas' : 'fas fa-flag';
+      const detalle = sugerencia.tipo === 'continente' ? '' : `<span class="sugerencia-detalle">${sugerencia.continente}</span>`;
+      
+      sugerenciaItem.innerHTML = `
+        <i class="${icono}"></i>
+        <span class="sugerencia-texto">${sugerencia.nombre}</span>
+        ${detalle}
+      `;
+      
+      sugerenciaItem.addEventListener('click', () => {
+        seleccionarDestino(sugerencia);
+      });
+      
+      sugerenciasBox.appendChild(sugerenciaItem);
+    });
+  } else {
+    sugerenciasBox.style.display = 'none';
+  }
+}
+
+// Mejora del prompt del sistema para enfatizar los requisitos
+function generarSystemPrompt() {
+  let systemPrompt = "Eres un EXPERTO EN PLANIFICACIÓN DE VIAJES de alto nivel. Tu tarea es crear itinerarios detallados y exhaustivos que sigan estrictamente estas reglas:\n\n";
+  
+  // Reglas para el formato
+  systemPrompt += "REGLAS OBLIGATORIAS DE FORMATO:\n";
+  systemPrompt += "1. Crea un itinerario para CADA DÍA del viaje, sin excepción.\n";
+  systemPrompt += "2. Estructura clara con encabezados H2 para días (## Día 1, ## Día 2, etc.)\n";
+  systemPrompt += "3. Actividades listadas cronológicamente con horarios específicos (09:00, 14:30, etc.)\n";
+  systemPrompt += "4. Cada día DEBE incluir una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas\n\n";
+  
+  // Reglas para los links y reservas
+  systemPrompt += "ELEMENTOS OBLIGATORIOS EN CADA ACTIVIDAD:\n";
+  systemPrompt += "1. LINKS: CADA atracción, restaurante, y lugar mencionado DEBE incluir un URL real entre paréntesis. Ejemplo: 'Museo del Prado (https://www.museodelprado.es/)'\n";
+  systemPrompt += "2. RESERVAS: Marca con [RESERVAR] los lugares donde sea necesario o recomendable reservar. Ejemplo: 'Restaurante Botín [RESERVAR] (https://botin.es/)'\n";
+  systemPrompt += "3. TRANSPORTE: Especifica el medio de transporte entre cada actividad\n\n";
+  
+  // Reglas para el contenido
+  systemPrompt += "CONTENIDO OBLIGATORIO:\n";
+  systemPrompt += "1. Adapta el itinerario exactamente a las fechas indicadas (todos los días)\n";
+  systemPrompt += "2. Incluye opciones específicas para los intereses mencionados\n";
+  systemPrompt += "3. Respeta estrictamente el presupuesto y ritmo de viaje indicados\n";
+  systemPrompt += "4. Cada día debe incluir al menos 4-5 actividades principales con tiempos y duraciones realistas\n";
+  
+  return systemPrompt;
+}
+
+// Función para generar un itinerario de prueba más completo y realista
+function generarItinerarioPrueba(destino, fechaInicio, fechaFin) {
+  // Calcular la duración del viaje
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+  const duracion = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  
+  let itinerario = `# Itinerario de viaje a ${destino}\n\n`;
+  
+  // Generar un día para cada fecha del viaje
+  for (let i = 0; i < duracion; i++) {
+    const currentDate = new Date(inicio);
+    currentDate.setDate(inicio.getDate() + i);
+    const formattedDate = currentDate.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    itinerario += `## Día ${i+1}: ${formattedDate}\n\n`;
+    
+    // Mañana
+    itinerario += `- 08:30 - Desayuno en Café Local [RESERVAR] (https://cafelocal-${destino.toLowerCase().replace(/\s/g, '')}.com)\n`;
+    itinerario += `- 10:00 - Visita al Museo Principal de ${destino} (https://museo-${destino.toLowerCase().replace(/\s/g, '')}.org) - Transporte: Metro\n`;
+    itinerario += `- 12:30 - Paseo por el centro histórico y compras en Mercado Tradicional (https://mercado-${destino.toLowerCase().replace(/\s/g, '')}.com) - Transporte: A pie\n`;
+    
+    // Tarde
+    itinerario += `- 14:00 - Almuerzo en Restaurante Típico [RESERVAR] (https://restaurante-tipico-${destino.toLowerCase().replace(/\s/g, '')}.com) - Transporte: A pie\n`;
+    itinerario += `- 16:00 - Visita a ${['Parque Nacional', 'Catedral', 'Castillo', 'Jardín Botánico', 'Mirador'][i % 5]} (https://${['parque', 'catedral', 'castillo', 'jardin', 'mirador'][i % 5]}-${destino.toLowerCase().replace(/\s/g, '')}.com) - Transporte: Autobús\n`;
+    itinerario += `- 18:30 - Tiempo libre para descansar en el hotel - Transporte: Taxi\n`;
+    
+    // Noche
+    itinerario += `- 20:30 - Cena en ${['Restaurante Gourmet', 'Taberna Local', 'Mercado Nocturno', 'Restaurante con Vistas', 'Bistró Tradicional'][i % 5]} [RESERVAR] (https://${['gourmet', 'taberna', 'mercado-noche', 'vistas', 'bistro'][i % 5]}-${destino.toLowerCase().replace(/\s/g, '')}.com) - Transporte: A pie\n`;
+    
+    if (i % 3 === 0) {
+      itinerario += `- 22:00 - Espectáculo cultural o show nocturno [RESERVAR] (https://cultura-${destino.toLowerCase().replace(/\s/g, '')}.com) - Transporte: Taxi\n`;
+    }
+    
+    // Consejos del día
+    itinerario += `\n### CONSEJOS DEL DÍA\n`;
+    itinerario += `- Lleva contigo la tarjeta de transporte que puedes adquirir en cualquier estación de metro\n`;
+    itinerario += `- El ${['Museo Principal', 'Parque Nacional', 'Catedral', 'Castillo', 'Jardín Botánico'][i % 5]} suele estar menos concurrido en las primeras horas\n`;
+    itinerario += `- Reserva con antelación en los restaurantes marcados como [RESERVAR], especialmente en temporada alta\n`;
+    itinerario += `- El clima en esta época suele ser ${['caluroso', 'templado', 'variable', 'fresco', 'húmedo'][i % 5]}, prepárate adecuadamente\n\n`;
+  }
+  
+  return itinerario;
 } 

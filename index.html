@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="overlay" id="overlay"></div>
@@ -364,6 +365,12 @@
               <i class="fas fa-cog"></i>
             </div>
           </div>
+          <div class="credit-display" id="credit-display">
+            <span class="credit-count"><i class="fas fa-ticket-alt"></i> <span id="credits-count">3</span> créditos</span>
+            <button id="buy-credits-btn" class="buy-credits-btn">
+              <i class="fas fa-plus-circle"></i> Comprar
+            </button>
+          </div>
         </div>
       </div>
 
@@ -400,6 +407,57 @@
     <p>© 2025 Triping | Plan your trip</p>
     <p>Powered by OpenAI</p>
   </footer>
+
+  <div class="credits-modal" id="credits-modal">
+    <div class="credits-modal-content">
+      <button class="credits-modal-close" id="credits-modal-close">
+        <i class="fas fa-times"></i>
+      </button>
+      <h3>¡Has alcanzado el límite de itinerarios gratuitos!</h3>
+      <p>Has utilizado tus 3 itinerarios gratuitos. Para continuar generando itinerarios personalizados, tienes dos opciones:</p>
+      
+      <div class="credits-options">
+        <div class="credits-option api-key-option">
+          <h4><i class="fas fa-key"></i> Usa tu propia API Key</h4>
+          <p>Obtén una API key gratuita de OpenAI y úsala para generar itinerarios ilimitados sin costo adicional.</p>
+          <a href="https://platform.openai.com/account/api-keys" target="_blank" class="secondary-btn">
+            Obtener API Key
+          </a>
+          <button id="use-own-key-btn" class="primary-btn">
+            <i class="fas fa-key"></i> Configurar mi API Key
+          </button>
+        </div>
+        
+        <div class="credits-option buy-credits-option">
+          <h4><i class="fas fa-ticket-alt"></i> Compra créditos</h4>
+          <p>Adquiere paquetes de créditos para seguir usando el servicio sin necesidad de obtener tu propia API key.</p>
+          
+          <div class="coming-soon-banner">
+            <i class="fas fa-clock"></i> Disponible próximamente
+          </div>
+          
+          <div class="credits-packages">
+            <div class="credit-package" data-credits="5">
+              <span class="package-credits">5 créditos</span>
+              <span class="package-coming-soon">Próximamente</span>
+              <button class="buy-package-btn" disabled>Disponible pronto</button>
+            </div>
+            <div class="credit-package" data-credits="10">
+              <span class="package-credits">10 créditos</span>
+              <span class="package-coming-soon">Próximamente</span>
+              <button class="buy-package-btn" disabled>Disponible pronto</button>
+            </div>
+            <div class="credit-package recommended" data-credits="25">
+              <span class="package-tag">Mejor valor</span>
+              <span class="package-credits">25 créditos</span>
+              <span class="package-coming-soon">Próximamente</span>
+              <button class="buy-package-btn" disabled>Disponible pronto</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

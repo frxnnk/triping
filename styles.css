@@ -1618,4 +1618,375 @@ div:not(.interest-checkbox) > .interests-grid {
   font-size: 1.2rem;
   cursor: pointer;
   color: var(--text-color);
+}
+
+/* Estilo para el contador de créditos */
+.credit-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 15px;
+}
+
+.credit-count {
+  background-color: var(--secondary-bg);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.credit-count i {
+  color: var(--primary-color);
+}
+
+.buy-credits-btn {
+  background-color: var(--secondary-bg);
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.buy-credits-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Modal de créditos */
+.credits-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.credits-modal.open {
+  display: flex;
+}
+
+.credits-modal-content {
+  background-color: var(--card-color);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  padding: 30px;
+  position: relative;
+  overflow-y: auto;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.credits-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--secondary-bg);
+  color: var(--text-color);
+  transition: background-color 0.2s;
+}
+
+.credits-modal-close:hover {
+  background-color: var(--border-color);
+}
+
+.credits-modal h3 {
+  color: var(--heading-color);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.credits-modal p {
+  color: var(--text-color);
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.credits-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+}
+
+@media (max-width: 768px) {
+  .credits-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.credits-option {
+  background-color: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 25px;
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.credits-option:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.credits-option h4 {
+  color: var(--heading-color);
+  font-size: 1.3rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.credits-option h4 i {
+  color: var(--primary-color);
+}
+
+.credits-option p {
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.credits-option .secondary-btn {
+  background-color: var(--card-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+  text-decoration: none;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.credits-option .secondary-btn:hover {
+  background-color: var(--border-color);
+}
+
+.credits-packages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+@media (max-width: 500px) {
+  .credits-packages {
+    grid-template-columns: 1fr;
+  }
+}
+
+.credit-package {
+  background-color: var(--card-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.credit-package:hover {
+  transform: scale(1.03);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.credit-package.recommended {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(45, 99, 237, 0.1);
+}
+
+.package-tag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--primary-color);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.package-credits {
+  font-weight: 600;
+  color: var(--heading-color);
+  font-size: 1.1rem;
+  margin-bottom: 5px;
+}
+
+.package-price {
+  color: var(--text-color);
+  margin-bottom: 15px;
+}
+
+.buy-package-btn {
+  background-color: var(--secondary-bg);
+  border: none;
+  width: 100%;
+  padding: 8px 0;
+  border-radius: 5px;
+  color: var(--primary-color);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.buy-package-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.credit-package.recommended .buy-package-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.credit-package.recommended .buy-package-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Media queries para ajustar en móviles */
+@media (max-width: 768px) {
+  .credit-display {
+    margin-right: 10px;
+  }
+  
+  .credit-count {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+  
+  .buy-credits-btn {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Estilos para la sección "próximamente" */
+.coming-soon-banner {
+  background-color: var(--secondary-bg);
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 500;
+  color: var(--heading-color);
+}
+
+.coming-soon-banner i {
+  color: var(--primary-color);
+}
+
+.package-coming-soon {
+  color: var(--primary-color);
+  font-style: italic;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.buy-package-btn:disabled {
+  background-color: var(--border-color);
+  color: var(--text-color);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.credit-package.recommended .buy-package-btn:disabled {
+  background-color: rgba(45, 99, 237, 0.5);
+  color: white;
+}
+
+/* Estilos para mejorar la visualización del itinerario */
+.reservation-tag {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.itinerary-link {
+  color: var(--primary-color);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.time-tag {
+  color: var(--heading-color);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transport-tag {
+  background-color: var(--secondary-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tips-header {
+  background-color: var(--secondary-bg);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#response h2 {
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 10px;
+  margin-top: 30px;
+}
+
+#response ul, #response li {
+  margin-left: 10px;
+  line-height: 1.6;
 } 
