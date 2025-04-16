@@ -1,0 +1,1621 @@
+:root {
+  --primary-color: #2d63ed;
+  --primary-hover: #1a4fcb;
+  --bg-color: #f8f9fa;
+  --card-color: #fff;
+  --text-color: #333;
+  --secondary-bg: #f1f4f9;
+  --border-color: #e0e5ec;
+  --shadow: 0 4px 12px rgba(0,0,0,0.05);
+  --heading-color: #1a1a1a;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --font-family: 'Poppins', sans-serif;
+  --sidebar-width: 420px;
+  --sidebar-collapsed-width: 0px;
+  --scrollbar-width: 8px;
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode {
+  --primary-color: #4285f4;
+  --primary-hover: #5c9aff;
+  --bg-color: #121212;
+  --card-color: #1e1e1e;
+  --text-color: #e0e0e0;
+  --secondary-bg: #2d2d2d;
+  --border-color: #3d3d3d;
+  --shadow: 0 4px 12px rgba(0,0,0,0.3);
+  --heading-color: #ffffff;
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout con sidebar que puede ocultarse */
+.app-layout {
+  display: flex;
+  flex: 1;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Sidebar de filtros (ahora ocultable) */
+.filters-sidebar {
+  width: var(--sidebar-width);
+  padding: 30px;
+  background-color: var(--card-color);
+  border-right: 1px solid var(--border-color);
+  height: 100%;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  transition: transform 0.3s ease, width 0.3s ease;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+
+/* Estilizar la barra de desplazamiento */
+.filters-sidebar::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+.filters-sidebar::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track);
+  border-radius: 10px;
+}
+
+.filters-sidebar::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.filters-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-color);
+  opacity: 0.7;
+}
+
+/* Para Firefox */
+.filters-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Estado colapsado del sidebar */
+.sidebar-collapsed .filters-sidebar {
+  transform: translateX(-100%);
+}
+
+.sidebar-collapsed .main-content {
+  margin-left: 0;
+  width: 100%;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Botón para mostrar/ocultar sidebar en la cabecera */
+.toggle-sidebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background-color: var(--secondary-bg);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  border: none;
+  color: var(--primary-color);
+  margin-right: 15px;
+  z-index: 100;
+}
+
+.toggle-sidebar-btn:hover {
+  background-color: var(--border-color);
+  transform: scale(1.05);
+}
+
+.toggle-sidebar-btn:active {
+  transform: scale(0.95);
+}
+
+.toggle-sidebar-btn i {
+  font-size: 1.2rem;
+  transition: transform 0.3s;
+}
+
+/* Contenido principal (se ajusta al colapsar sidebar) */
+.main-content {
+  flex: 1;
+  padding: 20px;
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Header con logo y controles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* Estado vacío - Mensaje cuando no hay itinerario */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  background-color: var(--card-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  color: var(--primary-color);
+  opacity: 0.7;
+  margin-bottom: 20px;
+}
+
+.empty-state h3 {
+  color: var(--heading-color);
+  font-size: 1.5rem;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  color: var(--text-color);
+  opacity: 0.8;
+  max-width: 500px;
+  margin: 0 auto 20px auto;
+  line-height: 1.6;
+}
+
+/* Ajustes en los formularios para aprovechar el espacio */
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select,
+.form-group textarea {
+  padding: 14px 16px;
+  font-size: 1.05rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 99, 237, 0.2);
+}
+
+.form-group label {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+  display: block;
+  font-weight: 500;
+  color: var(--heading-color);
+}
+
+/* Rediseño COMPLETO de intereses - solo iconos con tooltip */
+.interests-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 600px) {
+  .interests-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.interest-checkbox {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.interest-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Estilo principal del label */
+.interest-checkbox label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  height: 65px;
+}
+
+/* OCULTAR EL TEXTO completamente */
+.interest-checkbox label span {
+  display: none !important;
+}
+
+/* Estilo del icono */
+.interest-checkbox label i {
+  font-size: 1.8rem;
+  margin-bottom: 0;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.interest-checkbox input[type="checkbox"]:checked + label {
+  background-color: rgba(45, 99, 237, 0.1);
+  border-color: var(--primary-color);
+}
+
+.interest-checkbox input[type="checkbox"]:checked + label i {
+  color: var(--primary-color);
+  opacity: 1;
+  animation: pulse 0.4s ease-in-out;
+}
+
+/* Tooltip simple */
+.interest-checkbox label:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #000;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 999;
+  white-space: nowrap;
+}
+
+/* Ajustes de responsividad */
+@media (max-width: 1600px) {
+  :root {
+    --sidebar-width: 400px;
+  }
+}
+
+@media (max-width: 1400px) {
+  :root {
+    --sidebar-width: 380px;
+  }
+  
+  .filters-sidebar {
+    padding: 25px;
+  }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --sidebar-width: 350px;
+  }
+  
+  .filters-sidebar {
+    padding: 20px;
+  }
+  
+  .interests-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  /* En móvil, ocultar el botón de toggle en el header */
+  .toggle-sidebar-btn {
+    display: none;
+  }
+  
+  /* En móvil, el botón flotante sigue funcionando */
+  .sidebar-toggle-btn {
+    display: flex !important;
+  }
+  
+  .filters-sidebar {
+    width: 90%;
+    max-width: 400px;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 15px;
+  }
+  
+  .interests-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .interests-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .split, .date-inputs {
+    flex-direction: column;
+  }
+  
+  .split-field, .date-group {
+    width: 100%;
+    margin-bottom: 15px;
+  }
+}
+
+.sidebar-header {
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header h2 {
+  font-size: 1.7rem;
+  color: var(--primary-color);
+  margin-bottom: 5px;
+}
+
+.close-sidebar-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.intro-card {
+  margin-bottom: 25px;
+  padding: 15px;
+  background-color: rgba(45, 99, 237, 0.05);
+  border-left: 4px solid var(--primary-color);
+}
+
+.dark-mode .intro-card {
+  background-color: rgba(66, 133, 244, 0.05);
+}
+
+/* Botón para mostrar/ocultar sidebar en móvil */
+.sidebar-toggle-btn {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 50;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 20px;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-toggle-btn i {
+  margin-right: 5px;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Conservar estilos de tarjetas existentes */
+.card {
+  background-color: var(--card-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary-color);
+}
+
+.logo i {
+  font-size: 1.8rem;
+}
+
+.logo h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.settings-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--secondary-bg);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.settings-icon i {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.settings-icon:hover {
+  background-color: var(--border-color);
+}
+
+/* Ajustar para que los checkboxes se vean mejor en modo oscuro */
+.interest-checkbox {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: var(--secondary-bg);
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.interest-checkbox:hover {
+  background-color: rgba(45, 99, 237, 0.1);
+}
+
+.dark-mode .interest-checkbox {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .interest-checkbox:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.interest-checkbox input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.2);
+}
+
+/* Estilos para los campos de entrada */
+input[type="text"], input[type="password"], input[type="date"], textarea, select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(45, 99, 237, 0.2);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Overlay para el panel de configuración */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 150;
+  display: none;
+}
+
+.overlay.open {
+  display: block;
+}
+
+/* Mejorar el diseño del panel de configuración */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  max-width: 90%;
+  height: 100%;
+  background-color: var(--card-color);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: right 0.3s;
+  padding: 30px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-panel.open {
+  right: 0;
+}
+
+.settings-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-color);
+  background-color: var(--secondary-bg);
+  transition: background-color 0.2s;
+}
+
+.settings-close:hover {
+  background-color: var(--border-color);
+}
+
+.settings-panel h2 {
+  font-size: 1.8rem;
+  margin-bottom: 30px;
+  color: var(--heading-color);
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item {
+  margin-bottom: 25px;
+}
+
+.setting-item label,
+.setting-item span {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: var(--heading-color);
+}
+
+.settings-panel input[type="password"],
+.settings-panel input[type="text"],
+.settings-panel select,
+.settings-panel textarea {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-panel input:focus,
+.settings-panel select:focus,
+.settings-panel textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(45, 99, 237, 0.2);
+}
+
+/* Espaciado entre botones al final */
+#save-settings {
+  margin-top: auto;
+  margin-top: 20px;
+}
+
+/* Estilos para el textarea del prompt */
+#prompt-template {
+  height: 200px;
+  resize: vertical;
+  font-family: monospace;
+  line-height: 1.5;
+}
+
+/* Footer */
+footer {
+  background-color: var(--card-color);
+  text-align: center;
+  padding: 25px 0;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-color);
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+/* Estilos para el resto de componentes adaptados para el modo oscuro */
+.section-title {
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title i {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.section-title h3 {
+  font-size: 1.4rem;
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.interest-checkbox label {
+  cursor: pointer;
+}
+
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.split-field {
+  width: 100%;
+}
+
+.date-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.date-group {
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.primary-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
+}
+
+.primary-btn i {
+  font-size: 1.1rem;
+}
+
+.generate-btn-container {
+  margin-top: 25px;
+}
+
+/* Estilos para loading */
+#loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  text-align: center;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estilos para los botones de acción */
+.action-buttons {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  background-color: var(--secondary-bg);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-btn:hover {
+  background-color: var(--border-color);
+}
+
+.action-btn i {
+  font-size: 1rem;
+  color: var(--primary-color);
+}
+
+/* Mantener estilos para tarjetas de días */
+.day-card {
+  background-color: var(--card-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.3s, opacity 0.3s, box-shadow 0.3s;
+  border: 1px solid var(--border-color);
+  margin-bottom: 25px;
+}
+
+.day-card:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+  transform: translateY(-3px);
+}
+
+.day-card.removing {
+  transform: translateX(100px);
+  opacity: 0;
+}
+
+.day-card-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.day-card-header h3 {
+  margin: 0;
+  color: white;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.day-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.day-action-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.day-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.day-card-content {
+  padding: 25px;
+  line-height: 1.7;
+  color: var(--text-color);
+  font-size: 1.05rem;
+}
+
+/* Mantener estilos de editor */
+.day-editor-container {
+  padding: 15px;
+}
+
+.day-editor {
+  width: 100%;
+  min-height: 200px;
+  padding: 15px;
+  font-family: var(--font-family);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  margin-bottom: 15px;
+  resize: vertical;
+}
+
+/* Continue with all the specific day card styles */
+.place-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed var(--primary-color);
+  padding-bottom: 1px;
+  transition: all 0.2s;
+}
+
+.place-link:hover {
+  border-bottom: 1px solid var(--primary-color);
+  background-color: rgba(45, 99, 237, 0.05);
+}
+
+.place-link i {
+  font-size: 0.8em;
+  margin-left: 3px;
+  opacity: 0.7;
+}
+
+.reservation-required {
+  display: inline-block;
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--danger-color);
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 0 3px;
+  border-left: 3px solid var(--danger-color);
+}
+
+.dark-mode .reservation-required {
+  background-color: rgba(220, 53, 69, 0.2);
+}
+
+.reservation-required i {
+  margin-right: 5px;
+}
+
+.tips-header {
+  margin-top: 15px;
+  color: #f39c12;
+  display: flex;
+  align-items: center;
+}
+
+.tips-header i {
+  margin-right: 8px;
+  font-size: 1.1em;
+}
+
+.day-card-content h3 {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  margin-top: 15px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.day-card-content strong {
+  color: var(--heading-color);
+  font-weight: 600;
+}
+
+.day-card-content em {
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
+.day-card-content ul, .day-card-content ol {
+  padding-left: 25px;
+  margin: 15px 0;
+}
+
+.day-card-content li {
+  margin-bottom: 8px;
+}
+
+.day-card-content h4:not(.tips-header) {
+  margin-top: 18px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  color: var(--heading-color);
+}
+
+.day-card-content h4:not(.tips-header)::before {
+  content: "•";
+  margin-right: 8px;
+  color: var(--primary-color);
+  font-size: 1.2em;
+}
+
+.day-card-content p {
+  margin-bottom: 15px;
+}
+
+/* Mejorar la visualización de los inputs de fecha */
+input[type="date"] {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 1.05rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="date"]:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 99, 237, 0.2);
+}
+
+/* Mejorar el aspecto en modo oscuro */
+.dark-mode input[type="date"] {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-color);
+}
+
+/* Ajustar el selector de presupuesto y ritmo */
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.split-field {
+  width: 100%;
+}
+
+/* Ajustes para pantallas más grandes si se quiere un diseño horizontal */
+@media (min-width: 1600px) {
+  /* Opcionalmente, se podría volver a horizontal en pantallas muy grandes
+  .date-inputs {
+    flex-direction: row;
+  }
+  
+  .date-group {
+    width: calc(50% - 10px);
+  }
+  */
+}
+
+/* Estilos para el panel de historial */
+.historial-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  max-width: 90%;
+  height: 100%;
+  background-color: var(--card-color);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: right 0.3s;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.historial-panel.active {
+  right: 0;
+}
+
+.historial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.historial-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--heading-color);
+}
+
+.historial-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.historial-item {
+  background-color: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+}
+
+.historial-item-info {
+  margin-bottom: 10px;
+}
+
+.historial-item-info h4 {
+  margin: 0 0 5px 0;
+  color: var(--heading-color);
+  font-size: 1.1rem;
+}
+
+.historial-item-info p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.historial-fecha-creacion {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  display: block;
+  margin-top: 5px;
+}
+
+.historial-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cargar-itinerario-btn, .eliminar-itinerario-btn {
+  background-color: var(--card-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.cargar-itinerario-btn {
+  color: var(--primary-color);
+}
+
+.cargar-itinerario-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.eliminar-itinerario-btn {
+  color: var(--danger-color);
+}
+
+.eliminar-itinerario-btn:hover {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background-color: var(--secondary-bg);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  border: none;
+  color: var(--primary-color);
+  margin-right: 15px;
+}
+
+.header-btn:hover {
+  background-color: var(--border-color);
+  transform: scale(1.05);
+}
+
+/* Estilos para el nuevo loading container */
+.loading-container {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  margin: 20px 0;
+  gap: 20px;
+  background-color: var(--card-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+/* Mejorar la alineación de los botones en el header */
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Asegurar que el spinner se muestre correctamente */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Estilos para el selector de destinos múltiples */
+.destino-container {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  min-height: 45px;
+  padding: 5px 12px;
+  background-color: var(--card-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.destino-container:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(45, 99, 237, 0.2);
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.destino-tag {
+  display: flex;
+  align-items: center;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+  white-space: nowrap;
+}
+
+.destino-tag.continente {
+  background-color: rgba(45, 99, 237, 0.1);
+  border-color: var(--primary-color);
+}
+
+.destino-tag .remove-tag {
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.destino-tag .remove-tag:hover {
+  opacity: 1;
+}
+
+#destino-search {
+  flex: 1;
+  min-width: 100px;
+  border: none;
+  background: transparent;
+  outline: none;
+  height: 30px;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.destino-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  background-color: var(--card-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  display: none;
+  margin-top: 5px;
+}
+
+.destino-dropdown.active {
+  display: block;
+}
+
+.destino-option {
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.destino-option:hover {
+  background-color: var(--secondary-bg);
+}
+
+.destino-option.continente {
+  font-weight: 600;
+  color: var(--primary-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.destino-group {
+  margin-bottom: 10px;
+}
+
+.destino-group-title {
+  padding: 5px 15px;
+  font-weight: 600;
+  color: var(--heading-color);
+  background-color: var(--secondary-bg);
+  font-size: 0.9rem;
+}
+
+.form-help {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+/* Estilos para las opciones de transporte */
+.transport-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 600px) {
+  .transport-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.transport-checkbox {
+  position: relative;
+}
+
+.transport-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.transport-checkbox label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.transport-checkbox label i {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.transport-checkbox label span {
+  font-size: 0.9rem;
+}
+
+.transport-checkbox input[type="checkbox"]:checked + label {
+  background-color: rgba(45, 99, 237, 0.1);
+  border-color: var(--primary-color);
+}
+
+.transport-checkbox input[type="checkbox"]:checked + label i {
+  color: var(--primary-color);
+  opacity: 1;
+}
+
+.transport-checkbox input[type="checkbox"]:focus + label {
+  box-shadow: 0 0 0 2px rgba(45, 99, 237, 0.3);
+}
+
+.transport-checkbox label:hover {
+  background-color: var(--border-color);
+}
+
+/* Añadir animación al seleccionar intereses */
+.interest-checkbox input[type="checkbox"]:checked + label i,
+.transport-checkbox input[type="checkbox"]:checked + label i {
+  animation: pulse 0.4s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Mejorar el aspecto visual en modo oscuro */
+.dark-mode .interest-checkbox input[type="checkbox"]:checked + label,
+.dark-mode .transport-checkbox input[type="checkbox"]:checked + label {
+  background-color: rgba(66, 133, 244, 0.2);
+}
+
+/* Añadir colores temáticos a algunos intereses cuando están seleccionados */
+.interest-checkbox input[value="naturaleza"]:checked + label i {
+  color: #4CAF50;
+}
+
+.interest-checkbox input[value="gastronomia"]:checked + label i {
+  color: #FF5722;
+}
+
+.interest-checkbox input[value="playa"]:checked + label i {
+  color: #00BCD4;
+}
+
+.interest-checkbox input[value="vida nocturna"]:checked + label i {
+  color: #9C27B0;
+}
+
+.interest-checkbox input[value="arte"]:checked + label i {
+  color: #FF9800;
+}
+
+.interest-checkbox input[value="aventura"]:checked + label i {
+  color: #8BC34A;
+}
+
+.interest-checkbox input[value="relax"]:checked + label i {
+  color: #3F51B5;
+}
+
+/* Estilo para el contador de intereses */
+.selected-counter {
+  display: inline-block;
+  padding: 6px 12px;
+  background-color: var(--secondary-bg);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  margin: 10px 0;
+  color: var(--text-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.selected-counter span {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Mejorar el contraste y visibilidad en modo oscuro */
+.dark-mode .interest-checkbox label {
+  background-color: #252525;
+  border-color: #3d3d3d;
+}
+
+.dark-mode .interest-checkbox input[type="checkbox"]:checked + label {
+  background-color: rgba(66, 133, 244, 0.2);
+  border-color: #4285f4;
+}
+
+.dark-mode .selected-counter {
+  background-color: #252525;
+  color: #e0e0e0;
+}
+
+/* Reset completo para evitar heredar estilos no deseados */
+.interests-grid * {
+  box-sizing: border-box;
+}
+
+.interests-grid,
+.interest-checkbox,
+.interest-checkbox label,
+.interest-checkbox input,
+.interest-checkbox span,
+.interest-checkbox i {
+  max-width: 100%;
+}
+
+/* Eliminar cualquier contenedor adicional alrededor de los intereses */
+.card .interests-grid,
+.section-title + .interests-grid,
+div:not(.interest-checkbox) > .interests-grid {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Evitar que elementos padres de intereses tengan estilo de card */
+.interests-grid,
+.interests-grid > * {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Regla específica para evitar que .card afecte a los intereses */
+.card .interests-grid,
+.card .interest-checkbox {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.card .interests-grid {
+  margin-top: 10px !important;
+}
+
+/* Estilos para el selector de idioma */
+.language-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--card-color);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  width: 300px;
+  display: none;
+}
+
+.language-modal.open {
+  display: block;
+}
+
+.language-modal h3 {
+  margin-top: 0;
+  color: var(--heading-color);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.language-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background-color: var(--secondary-bg);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.language-option:hover {
+  background-color: var(--border-color);
+}
+
+.language-option.active {
+  background-color: rgba(45, 99, 237, 0.1);
+  border: 1px solid var(--primary-color);
+}
+
+.language-option img {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+  border-radius: 50%;
+}
+
+.language-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-color);
+} 

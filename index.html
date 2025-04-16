@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WAI - Plan your trip</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="overlay" id="overlay"></div>
+  
+  <div class="language-modal" id="language-modal">
+    <button class="language-modal-close" id="language-modal-close">
+      <i class="fas fa-times"></i>
+    </button>
+    <h3>Selecciona un idioma</h3>
+    <div class="language-options">
+      <div class="language-option" data-lang="es">
+        <span>Español</span>
+      </div>
+      <div class="language-option" data-lang="en">
+        <span>English</span>
+      </div>
+      <div class="language-option" data-lang="fr">
+        <span>Français</span>
+      </div>
+      <div class="language-option" data-lang="de">
+        <span>Deutsch</span>
+      </div>
+      <div class="language-option" data-lang="it">
+        <span>Italiano</span>
+      </div>
+      <div class="language-option" data-lang="pt">
+        <span>Português</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-close" id="settings-close">
+      <i class="fas fa-times"></i>
+    </div>
+    <h2>Configuración</h2>
+    
+    <div class="setting-item">
+      <label for="saved-api-key">API Key de OpenAI:</label>
+      <input type="password" id="saved-api-key" placeholder="sk-...">
+    </div>
+    
+    <div class="setting-item">
+      <span>Modo oscuro</span>
+      <label class="switch">
+        <input type="checkbox" id="dark-mode-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    
+    <div class="setting-item">
+      <label for="language-selector">Idioma:</label>
+      <select id="language-selector">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="it">Italiano</option>
+        <option value="pt">Português</option>
+      </select>
+    </div>
+    
+    <div class="setting-item">
+      <label for="prompt-template">Plantilla de Prompt:</label>
+      <textarea id="prompt-template" placeholder="Escribe aquí la plantilla de prompt que se usará para generar el itinerario..."></textarea>
+      <p class="setting-help">Puedes usar las variables: {destino}, {fechaInicio}, {fechaFin}, {intereses}, {presupuesto}, {ritmo}</p>
+    </div>
+    
+    <button id="save-settings" class="primary-btn">Guardar configuración</button>
+  </div>
+
+  <div class="app-layout">
+    <!-- Sidebar toggle button (visible on mobile) -->
+    <button id="sidebar-toggle" class="sidebar-toggle-btn">
+      <i class="fas fa-sliders-h"></i> Filtros
+    </button>
+
+    <!-- Left sidebar with filters -->
+    <aside class="filters-sidebar" id="filters-sidebar">
+      <div class="sidebar-header">
+        <h2>Plan your trip</h2>
+        <button id="close-sidebar" class="close-sidebar-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="card intro-card">
+        <p>Crea un itinerario personalizado para tu próximo viaje en segundos. Especifica tu destino, fechas y preferencias.</p>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-map-marked-alt"></i>
+          <h3>Detalles del Viaje</h3>
+        </div>
+        
+        <div class="form-group">
+          <label for="destino-search">Destino:</label>
+          <div class="destino-container">
+            <div class="tags-container" id="destino-tags"></div>
+            <input type="text" id="destino-search" placeholder="Busca países o continentes...">
+            <div class="destino-dropdown" id="destino-dropdown"></div>
+          </div>
+          <small class="form-help">Puedes seleccionar múltiples países o continentes</small>
+          <!-- Campo oculto para almacenar los destinos seleccionados -->
+          <input type="hidden" id="destino" value="">
+        </div>
+        
+        <div class="form-group date-inputs">
+          <div class="date-group">
+            <label for="fechaInicio">Fecha de inicio:</label>
+            <input type="date" id="fechaInicio">
+          </div>
+          
+          <div class="date-group">
+            <label for="fechaFin">Fecha de fin:</label>
+            <input type="date" id="fechaFin">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="alojamiento">Alojamiento (opcional):</label>
+          <input type="text" id="alojamiento" placeholder="Nombre/ubicación de tu hotel">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-heart"></i>
+          <h3>Intereses</h3>
+        </div>
+        
+        <div class="selected-counter">
+          <span id="interest-counter">0</span> intereses seleccionados
+        </div>
+        
+        <div class="interests-grid">
+          <div class="interest-checkbox">
+            <input type="checkbox" id="arte" value="arte">
+            <label for="arte" data-tooltip="Arte">
+              <i class="fas fa-palette"></i>
+              <span>Arte</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="gastronomia" value="gastronomia">
+            <label for="gastronomia" data-tooltip="Gastronomía">
+              <i class="fas fa-utensils"></i>
+              <span>Gastronomía</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="arquitectura" value="arquitectura">
+            <label for="arquitectura" data-tooltip="Arquitectura">
+              <i class="fas fa-landmark"></i>
+              <span>Arquitectura</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="naturaleza" value="naturaleza">
+            <label for="naturaleza" data-tooltip="Naturaleza">
+              <i class="fas fa-leaf"></i>
+              <span>Naturaleza</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="compras" value="compras">
+            <label for="compras" data-tooltip="Compras">
+              <i class="fas fa-shopping-bag"></i>
+              <span>Compras</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="historia" value="historia">
+            <label for="historia">
+              <i class="fas fa-history"></i>
+              <span>Historia</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="playa" value="playa">
+            <label for="playa">
+              <i class="fas fa-umbrella-beach"></i>
+              <span>Playas</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="aventura" value="aventura">
+            <label for="aventura">
+              <i class="fas fa-mountain"></i>
+              <span>Aventura</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="nocturna" value="vida nocturna">
+            <label for="nocturna">
+              <i class="fas fa-cocktail"></i>
+              <span>Nocturna</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="cultura" value="cultura local">
+            <label for="cultura">
+              <i class="fas fa-users"></i>
+              <span>Cultura</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="relax" value="relax">
+            <label for="relax">
+              <i class="fas fa-spa"></i>
+              <span>Relax</span>
+            </label>
+          </div>
+          <div class="interest-checkbox">
+            <input type="checkbox" id="foto" value="fotografía">
+            <label for="foto">
+              <i class="fas fa-camera"></i>
+              <span>Fotografía</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-cog"></i>
+          <h3>Preferencias</h3>
+        </div>
+        
+        <div class="form-group split">
+          <div class="split-field">
+            <label for="presupuesto">Presupuesto:</label>
+            <select id="presupuesto">
+              <option value="bajo">Económico</option>
+              <option value="medio" selected>Medio</option>
+              <option value="alto">Premium</option>
+            </select>
+          </div>
+          
+          <div class="split-field">
+            <label for="ritmo">Ritmo del viaje:</label>
+            <select id="ritmo">
+              <option value="relajado">Relajado</option>
+              <option value="moderado" selected>Moderado</option>
+              <option value="intenso">Intenso</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="instrucciones">Instrucciones adicionales:</label>
+          <textarea id="instrucciones" rows="3" placeholder="Menciona preferencias especiales, restricciones alimentarias, accesibilidad, etc."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="reservas-existentes">Alojamientos y reservas confirmadas:</label>
+          <textarea id="reservas-existentes" rows="3" placeholder="Especifica los hoteles, traslados o reservas que ya tengas confirmados (Ej: 'Hotel Marriott en Madrid del 5-8 junio', 'Vuelo a Barcelona el día 9', 'Reserva en restaurante El Paraguas el 6 a las 20:00')"></textarea>
+          <small class="form-help">Esta información se integrará en tu itinerario. Incluye fechas y horas si es posible.</small>
+        </div>
+
+        <div class="form-group transport-options">
+          <label>Medios de transporte preferidos:</label>
+          <div class="transport-grid">
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-caminando" value="caminando" checked>
+              <label for="transporte-caminando">
+                <i class="fas fa-walking"></i>
+                <span>A pie</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-auto" value="auto">
+              <label for="transporte-auto">
+                <i class="fas fa-car"></i>
+                <span>Auto</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-bus" value="bus" checked>
+              <label for="transporte-bus">
+                <i class="fas fa-bus"></i>
+                <span>Bus</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-tren" value="tren">
+              <label for="transporte-tren">
+                <i class="fas fa-train"></i>
+                <span>Tren</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-metro" value="metro">
+              <label for="transporte-metro">
+                <i class="fas fa-subway"></i>
+                <span>Metro</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-bici" value="bicicleta">
+              <label for="transporte-bici">
+                <i class="fas fa-bicycle"></i>
+                <span>Bici</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-avion" value="avion">
+              <label for="transporte-avion">
+                <i class="fas fa-plane"></i>
+                <span>Avión</span>
+              </label>
+            </div>
+            <div class="transport-checkbox">
+              <input type="checkbox" id="transporte-barco" value="barco">
+              <label for="transporte-barco">
+                <i class="fas fa-ship"></i>
+                <span>Barco</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="generate-btn-container">
+          <button id="generar-btn" class="primary-btn">
+            <i class="fas fa-magic"></i> Crear mi itinerario
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content area -->
+    <main class="main-content">
+      <div class="header">
+        <div class="header-left">
+          <button id="toggle-sidebar-btn" class="toggle-sidebar-btn">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="logo">
+            <i class="fas fa-map-marked-alt"></i>
+            <h1>Triping</h1>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="header-actions">
+            <button id="historial-btn" class="header-btn" title="Ver itinerarios guardados">
+              <i class="fas fa-history"></i>
+            </button>
+            <button id="language-switch-btn" class="header-btn" title="Cambiar idioma">
+              <i class="fas fa-globe"></i>
+            </button>
+            <div class="settings-icon" id="settings-icon">
+              <i class="fas fa-cog"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="loading" class="loading-container">
+        <div class="spinner"></div>
+        <span>Generando tu itinerario personalizado... Esto puede tomar hasta un minuto.</span>
+      </div>
+
+      <!-- Estado vacío cuando no hay itinerario -->
+      <div id="empty-state" class="empty-state">
+        <div class="empty-state-icon">
+          <i class="fas fa-route"></i>
+        </div>
+        <h3>¡Comienza tu aventura!</h3>
+        <p>Configura los detalles de tu viaje en el panel de la izquierda y haz clic en "Crear mi itinerario" para generar un plan personalizado para tu próxima aventura.</p>
+      </div>
+
+      <div class="card response-box">
+        <div class="section-title">
+          <i class="fas fa-route"></i>
+          <h3>Tu itinerario personalizado:</h3>
+        </div>
+        <div id="response"></div>
+        <div class="action-buttons" id="action-buttons">
+          <button id="copiar-btn" class="action-btn"><i class="fas fa-copy"></i> Copiar</button>
+          <button id="imprimir-btn" class="action-btn"><i class="fas fa-print"></i> Imprimir</button>
+          <button id="pdf-btn" class="action-btn"><i class="fas fa-file-pdf"></i> Guardar PDF</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <p>© 2025 Triping | Plan your trip</p>
+    <p>Powered by OpenAI</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
