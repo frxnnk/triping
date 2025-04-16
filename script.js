@@ -150,7 +150,11 @@ const translations = {
     "best_value": "Mejor valor",
     "api_key_error": "Error en la configuración de la API Key. Por favor, introduce tu propia API Key en la configuración.",
     "credits_remaining_one": "¡Te queda 1 crédito! Considera comprar más o usar tu propia API key.",
-    "credits_remaining_multiple": "¡Te quedan {count} créditos! Considera comprar más o usar tu propia API key."
+    "credits_remaining_multiple": "¡Te quedan {count} créditos! Considera comprar más o usar tu propia API key.",
+    "own_api_key": "API propia",
+    "site_api_key": "API del sitio",
+    "using_own_key_tooltip": "Estás usando tu propia API key (generación ilimitada)",
+    "using_site_key_tooltip": "Estás usando créditos del sitio"
   },
   "en": {
     "app_title": "Itinerary Generator",
@@ -221,7 +225,11 @@ const translations = {
     "best_value": "Best value",
     "api_key_error": "API Key configuration error. Please enter your own API Key in the settings.",
     "credits_remaining_one": "You have 1 credit left! Consider buying more or using your own API key.",
-    "credits_remaining_multiple": "You have {count} credits left! Consider buying more or using your own API key."
+    "credits_remaining_multiple": "You have {count} credits left! Consider buying more or using your own API key.",
+    "own_api_key": "Personal API",
+    "site_api_key": "Site API",
+    "using_own_key_tooltip": "You're using your own API key (unlimited generation)",
+    "using_site_key_tooltip": "You're using site credits"
   },
   "fr": {
     "app_title": "Générateur d'itinéraires",
@@ -292,7 +300,11 @@ const translations = {
     "best_value": "Meilleure offre",
     "api_key_error": "Erreur de configuration de la clé API. Veuillez saisir votre propre clé API dans les paramètres.",
     "credits_remaining_one": "Il vous reste 1 crédit ! Envisagez d'en acheter plus ou d'utiliser votre propre clé API.",
-    "credits_remaining_multiple": "Il vous reste {count} crédits ! Envisagez d'en acheter plus ou d'utiliser votre propre clé API."
+    "credits_remaining_multiple": "Il vous reste {count} crédits ! Envisagez d'en acheter plus ou d'utiliser votre propre clé API.",
+    "own_api_key": "Clé API personnelle",
+    "site_api_key": "Clé API du site",
+    "using_own_key_tooltip": "Vous utilisez votre propre clé API (génération illimitée)",
+    "using_site_key_tooltip": "Vous utilisez des crédits de site"
   },
   "de": {
     "app_title": "Reiseplaner",
@@ -363,7 +375,11 @@ const translations = {
     "best_value": "Bestes Angebot",
     "api_key_error": "Fehler bei der API-Schlüsselkonfiguration. Bitte geben Sie Ihren eigenen API-Schlüssel in den Einstellungen ein.",
     "credits_remaining_one": "Sie haben noch 1 Guthaben übrig! Erwägen Sie, mehr zu kaufen oder Ihren eigenen API-Schlüssel zu verwenden.",
-    "credits_remaining_multiple": "Sie haben noch {count} Guthaben übrig! Erwägen Sie, mehr zu kaufen oder Ihren eigenen API-Schlüssel zu verwenden."
+    "credits_remaining_multiple": "Sie haben noch {count} Guthaben übrig! Erwägen Sie, mehr zu kaufen oder Ihren eigenen API-Schlüssel zu verwenden.",
+    "own_api_key": "Eigene API-Schlüssel",
+    "site_api_key": "API-Schlüssel des Sites",
+    "using_own_key_tooltip": "Sie verwenden Ihren eigenen API-Schlüssel (unbegrenzte Generierung)",
+    "using_site_key_tooltip": "Sie verwenden die API-Schlüssel des Sites (Generierung mit Credits)"
   },
   "it": {
     "app_title": "Pianificatore di viaggio",
@@ -434,7 +450,11 @@ const translations = {
     "best_value": "Miglior valore",
     "api_key_error": "Errore nella configurazione della chiave API. Inserisci la tua chiave API nelle impostazioni.",
     "credits_remaining_one": "Ti rimane 1 credito! Considera di acquistarne altri o di utilizzare la tua chiave API.",
-    "credits_remaining_multiple": "Ti rimangono {count} crediti! Considera di acquistarne altri o di utilizzare la tua chiave API."
+    "credits_remaining_multiple": "Ti rimangono {count} crediti! Considera di acquistarne altri o di utilizzare la tua chiave API.",
+    "own_api_key": "Chiave API personale",
+    "site_api_key": "Chiave API del sito",
+    "using_own_key_tooltip": "Stai usando la tua chiave API (generazione illimitata)",
+    "using_site_key_tooltip": "Stai usando i crediti del sito"
   },
   "pt": {
     "app_title": "Gerador de Itinerários",
@@ -505,7 +525,11 @@ const translations = {
     "best_value": "Melhor valor",
     "api_key_error": "Erro na configuração da chave API. Por favor, insira sua própria chave API nas configurações.",
     "credits_remaining_one": "Você tem 1 crédito restante! Considere comprar mais ou usar sua própria chave API.",
-    "credits_remaining_multiple": "Você tem {count} créditos restantes! Considere comprar mais ou usar sua própria chave API."
+    "credits_remaining_multiple": "Você tem {count} créditos restantes! Considere comprar mais ou usar sua própria chave API.",
+    "own_api_key": "Chave API pessoal",
+    "site_api_key": "Chave API do site",
+    "using_own_key_tooltip": "Você está usando sua chave API (geração ilimitada)",
+    "using_site_key_tooltip": "Você está usando créditos do site"
   }
 };
 
@@ -605,14 +629,13 @@ function initCreditsSystem() {
 function updateCreditsDisplay() {
   const credits = localStorage.getItem('credits') || '3';
   const currentLang = localStorage.getItem('language') || 'es';
+  const usingOwnKey = localStorage.getItem('usingOwnKey') === 'true';
   
-  // Actualizar solo el número, no el texto
+  // Actualizar el número de créditos
   document.getElementById('credits-count').textContent = credits;
   
-  // Actualizar el texto de "créditos" por separado, solo si está definido en las traducciones
-  const creditText = document.querySelector('.credit-count span:nth-child(2)');
+  // Actualizar el texto de "créditos" por separado
   const creditLabel = document.querySelector('.credit-count');
-  
   if (creditLabel) {
     // Limpiar el texto existente
     creditLabel.innerHTML = `<i class="fas fa-ticket-alt"></i> <span id="credits-count">${credits}</span>`;
@@ -622,11 +645,30 @@ function updateCreditsDisplay() {
     creditLabel.innerHTML += ` ${translatedText}`;
   }
   
-  // Actualizar el texto del botón de compra
+  // Actualizar el indicador del tipo de API key
+  const keyIndicator = document.getElementById('api-key-indicator');
+  const keyTypeText = document.getElementById('key-type-text');
+  
+  if (keyIndicator && keyTypeText) {
+    keyIndicator.className = 'api-key-indicator ' + (usingOwnKey ? 'own-key' : 'site-key');
+    
+    if (usingOwnKey) {
+      keyTypeText.textContent = translations[currentLang]?.own_api_key || "API propia";
+      keyIndicator.title = translations[currentLang]?.using_own_key_tooltip || "Estás usando tu propia API key";
+    } else {
+      keyTypeText.textContent = translations[currentLang]?.site_api_key || "API del sitio";
+      keyIndicator.title = translations[currentLang]?.using_site_key_tooltip || "Estás usando créditos del sitio";
+    }
+  }
+  
+  // Actualizar el botón de compra
   const buyBtn = document.getElementById('buy-credits-btn');
   if (buyBtn) {
     const buyText = translations[currentLang]?.buy_credits || "Comprar";
     buyBtn.innerHTML = `<i class="fas fa-plus-circle"></i> ${buyText}`;
+    
+    // Mostrar u ocultar el botón según si usa clave propia
+    buyBtn.style.display = usingOwnKey ? 'none' : 'flex';
   }
 }
 
