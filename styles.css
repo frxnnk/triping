@@ -2058,7 +2058,7 @@ div:not(.interest-checkbox) > .interests-grid {
   background: linear-gradient(to bottom, var(--primary-color), var(--primary-color-dark, #1e52e2));
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .day-regenerate-btn:hover i {
@@ -2069,7 +2069,7 @@ div:not(.interest-checkbox) > .interests-grid {
   background: linear-gradient(to bottom, var(--secondary-color), var(--secondary-color-dark, #30689c));
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .day-edit-btn:active, 
@@ -2136,25 +2136,10 @@ div:not(.interest-checkbox) > .interests-grid {
 
 .activity-edit-btn:hover {
   background: linear-gradient(145deg, var(--secondary-color), var(--secondary-color-dark, #30689c));
-  color: white;
-  transform: translateY(-2px) scale(1.1);
-  box-shadow: 3px 3px 6px rgba(0,0,0,0.2);
 }
 
 .activity-regenerate-btn:hover {
   background: linear-gradient(145deg, var(--primary-color), var(--primary-color-dark, #1e52e2));
-  color: white;
-  transform: translateY(-2px) scale(1.1);
-  box-shadow: 3px 3px 6px rgba(0,0,0,0.2);
-}
-
-.activity-regenerate-btn:hover i {
-  animation: spin 1s;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* Mejora del botón principal de regenerar */
@@ -2390,19 +2375,25 @@ div:not(.interest-checkbox) > .interests-grid {
   position: relative;
 }
 
-.consejos-section::before {
-  content: "• Esta sección no puede regenerarse";
-  display: block;
-  font-size: 0.8rem;
+/* Remove or comment out the styles for the warning text */
+/*
+.regeneration-warning {
   color: #f39c12;
+  font-size: 0.8rem;
   font-style: italic;
   margin-bottom: 10px;
-  opacity: 0.7;
+  display: block;
+}
+*/
+
+/* Ensure the consejos-section doesn't have special formatting causing yellow text */
+.consejos-section::before {
+  content: none; /* Remove any content that might be added with ::before */
 }
 
-/* Asegurarse de que los botones de regeneración no aparezcan en esta sección */
+/* Make sure activity regenerate buttons don't have special styling in tips section */
 .consejos-container .activity-regenerate-btn {
-  display: none !important;
+  display: flex !important; /* Override any display:none that might be set */
 }
 
 /* Estilos para el indicador de tipo de API key */
@@ -2572,461 +2563,87 @@ div:not(.interest-checkbox) > .interests-grid {
   opacity: 0.8;
 }
 
-/* Estilos para la sección de presupuesto diario */
-.budget-header {
-  margin-top: 25px;
-  color: #2ecc71;
+/* Estilos para los botones de acción en modo oscuro */
+.dark-mode .day-edit-btn, 
+.dark-mode .day-regenerate-btn {
+  background: linear-gradient(to bottom, #2d2d2d, #222);
+  border: 1px solid #444;
+  color: #e0e0e0;
+}
+
+.dark-mode .day-regenerate-btn:hover {
+  background: linear-gradient(to bottom, var(--primary-color), var(--primary-color-dark, #1e52e2));
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.dark-mode .day-edit-btn:hover {
+  background: linear-gradient(to bottom, var(--secondary-color), var(--secondary-color-dark, #30689c));
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.dark-mode .activity-edit-btn,
+.dark-mode .activity-regenerate-btn {
+  background: linear-gradient(145deg, #2a2a2a, #222);
+  color: #e0e0e0;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2), 
+              -2px -2px 5px rgba(255,255,255,0.05);
+}
+
+.dark-mode .activity-edit-btn:hover {
+  background: linear-gradient(145deg, var(--secondary-color), var(--secondary-color-dark, #30689c));
+}
+
+.dark-mode .activity-regenerate-btn:hover {
+  background: linear-gradient(145deg, var(--primary-color), var(--primary-color-dark, #1e52e2));
+}
+
+/* Improve visibility of day header in dark mode */
+.dark-mode .day-header {
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #444;
+}
+
+.warning-banner {
+  background-color: rgba(255, 193, 7, 0.15);
+  border-left: 4px solid #ffc107;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  background-color: rgba(46, 204, 113, 0.1);
-  border-radius: 6px;
+  gap: 10px;
+  font-size: 0.95rem;
 }
 
-.budget-header i {
-  margin-right: 8px;
+.warning-banner i {
+  color: #ffc107;
+  font-size: 1.2rem;
 }
 
-/* Estilos para el presupuesto total */
-.total-budget-header {
-  margin-top: 40px;
-  color: #3498db;
-  padding: 12px;
-  background-color: rgba(52, 152, 219, 0.1);
-  border-radius: 8px;
-  text-align: center;
-  font-size: 1.5rem;
-}
-
-.total-budget-header i {
-  margin-right: 10px;
-}
-
-/* Destacar costos en el texto */
-.cost {
-  font-weight: 600;
-  color: #2ecc71;
-}
-
-/* Destacar información de distancia */
-.distance-info {
-  font-style: italic;
-  color: #7f8c8d;
-}
-
-/* Estilos para tarjetas de actividad */
-.activity-card {
-  background-color: var(--card-color);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border-left: 4px solid var(--primary-color);
-  position: relative;
+.warning-action-btn {
+  margin-left: auto;
+  background-color: #ffc107;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   transition: all 0.2s;
 }
 
-.activity-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.activity-time {
-  font-weight: 600;
-  color: var(--primary-color);
-  font-size: 1.1rem;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-}
-
-.activity-time i {
-  margin-right: 6px;
-}
-
-.activity-content {
-  line-height: 1.6;
-}
-
-/* Información de transporte */
-.transport-info {
-  display: flex;
-  align-items: center;
-  margin: 8px 0;
-  padding: 6px 10px;
-  background-color: var(--secondary-bg);
-  border-radius: 6px;
-  max-width: fit-content;
-}
-
-.transport-icon {
-  font-size: 1.2rem;
-  margin-right: 8px;
-  color: var(--primary-color);
-}
-
-/* Información de dirección */
-.address-info {
-  display: flex;
-  align-items: center;
-  margin: 8px 0;
-  font-style: italic;
-  color: var(--text-color);
-}
-
-.address-info i {
-  color: #e74c3c;
-  margin-right: 8px;
-}
-
-/* Enlaces más atractivos */
-.itinerary-link {
-  display: inline-flex;
-  align-items: center;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 4px 10px;
-  border-radius: 4px;
-  text-decoration: none;
-  margin: 8px 0;
-  transition: all 0.3s;
-  font-size: 0.9rem;
-}
-
-.itinerary-link:hover {
-  background-color: var(--primary-hover);
+.warning-action-btn:hover {
+  background-color: #e0a800;
   transform: translateY(-1px);
 }
 
-.itinerary-link i {
-  margin-right: 5px;
-}
-
-/* Lista de itinerario mejorada */
-.itinerary-list {
-  padding-left: 15px;
-  margin: 15px 0;
-}
-
-.itinerary-list li {
-  margin-bottom: 10px;
-  position: relative;
-  padding-left: 5px;
-}
-
-/* Estilo para la cabecera visual */
-.visual-header {
-  height: 300px;
-  width: 100%;
-  background-size: cover;
-  background-position: center;
-  border-radius: 15px;
-  margin-bottom: 40px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: white;
-  overflow: hidden;
-}
-
-.visual-header-content {
-  padding: 30px;
-  max-width: 80%;
-  z-index: 2;
-}
-
-.visual-header h1 {
-  font-size: 2.5rem;
-  margin-bottom: 10px;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
-
-.visual-header p {
-  font-size: 1.2rem;
-  opacity: 0.9;
-  margin-bottom: 20px;
-}
-
-.trip-stats {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  margin-top: 20px;
-}
-
-.trip-stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: rgba(0,0,0,0.3);
-  backdrop-filter: blur(10px);
-  padding: 10px 20px;
-  border-radius: 10px;
-}
-
-.trip-stat-item i {
-  font-size: 1.5rem;
-  margin-bottom: 5px;
-}
-
-/* Estilos para la línea de tiempo */
-.timeline-wrapper {
-  margin: 30px 0;
-  border-radius: 10px;
-  padding: 10px;
-  background-color: var(--card-color);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.timeline-item {
-  padding: 5px 8px;
-  border-radius: 4px;
-  background-color: var(--primary-color);
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.9rem;
-}
-
-.timeline-item i {
-  font-size: 1rem;
-}
-
-/* Estilos para dispositivos móviles */
-@media (max-width: 768px) {
-  .visual-header {
-    height: 250px;
-  }
-  
-  .visual-header-content {
-    max-width: 95%;
-  }
-  
-  .visual-header h1 {
-    font-size: 1.8rem;
-  }
-  
-  .trip-stats {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .trip-stat-item {
-    flex-direction: row;
-    gap: 10px;
-    width: 100%;
-  }
-}
-
-/* Estilos mejorados para línea de tiempo */
-.timeline-container {
-  margin: 30px 0;
-  border-radius: 12px;
-  padding: 15px;
-  background-color: var(--card-color);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.timeline-title {
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  color: var(--primary-color);
-}
-
-.timeline-title i {
-  margin-right: 8px;
-}
-
-.timeline-element {
-  height: 250px;
-  margin-bottom: 15px;
-}
-
-.timeline-navigation {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 15px;
-}
-
-.timeline-nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
-  background-color: var(--secondary-bg);
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-family: var(--font-family);
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.timeline-nav-btn:hover {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-/* Estilos para el mapa principal del día */
-.map-wrapper {
-  margin: 30px 0;
-}
-
-.day-map-container {
-  background-color: var(--card-color);
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.map-title {
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  color: var(--primary-color);
-}
-
-.map-title i {
-  margin-right: 8px;
-}
-
-.day-map {
-  border-radius: 8px;
-  overflow: hidden;
-  height: 350px;
-  margin-bottom: 15px;
-}
-
-.day-locations {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.location-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background-color: var(--secondary-bg);
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.location-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.location-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 50%;
-  font-weight: bold;
-}
-
-.location-details {
-  flex: 1;
-}
-
-.location-time {
-  font-weight: bold;
-  color: var(--primary-color);
-}
-
-.location-title {
-  font-size: 0.9rem;
-}
-
-/* Estilos mejorados para tarjetas de actividad */
-.activity-card {
-  background-color: var(--card-color);
-  border-radius: 12px;
-  padding: 0;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: all 0.3s;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.activity-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.activity-header {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 12px 15px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.activity-time {
-  font-weight: 600;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-}
-
-.activity-type {
-  font-size: 1.2rem;
-}
-
-.activity-content {
-  padding: 20px;
-  line-height: 1.7;
-}
-
-.activity-content h4 {
-  margin-bottom: 10px;
-  color: var(--heading-color);
-}
-
-.activity-map {
-  height: 180px;
-  width: 100%;
-  margin-top: 15px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-}
-
-.activity-footer {
-  display: flex;
-  padding: 0 20px 20px;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.activity-info-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  background-color: var(--secondary-bg);
-  border-radius: 20px;
-  font-size: 0.9rem;
-  margin-right: 8px;
-  margin-top: 5px;
-}
-
-.activity-info-tag i {
-  margin-right: 5px;
-  color: var(--primary-color);
-}
+.dark-mode .warning-banner {
+  background-color: rgba(255, 193, 7, 0.1);
+} 

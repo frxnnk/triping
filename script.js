@@ -1257,45 +1257,16 @@ async function generarItinerario() {
   }
 }
 
-// Actualizar la función procesarRespuesta para añadir una cabecera más visual
+// Modify the procesarRespuesta function to better format the response
 function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   // Asegurarse de que el estado vacío esté oculto cuando hay contenido
   showEmptyState(false);
   
-  // Determinar imagen de fondo basada en el destino
-  let imagenFondo = '';
-  if (destino.toLowerCase().includes('parís') || destino.toLowerCase().includes('paris')) {
-    imagenFondo = 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000';
-  } else if (destino.toLowerCase().includes('roma')) {
-    imagenFondo = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1000';
-  } else if (destino.toLowerCase().includes('barcelona')) {
-    imagenFondo = 'https://images.unsplash.com/photo-1583422409516-2895a77efded?q=80&w=1000';
-  } else {
-    // Imagen genérica de viaje
-    imagenFondo = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=1000';
-  }
-  
-  // Limpiar el contenedor de respuesta y añadir cabecera visual
+  // Limpiar el contenedor de respuesta y añadir cabecera
   responseBox.innerHTML = `
-    <div class="visual-header" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('${imagenFondo}')">
-      <div class="visual-header-content">
-        <h1>Itinerario para ${destino}</h1>
-        <p>${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
-        <div class="trip-stats">
-          <div class="trip-stat-item">
-            <i class="fas fa-calendar-day"></i>
-            <span>${calcularDuracionViaje(fechaInicio, fechaFin)} días</span>
-          </div>
-          <div class="trip-stat-item">
-            <i class="fas fa-map-marker-alt"></i>
-            <span>${destino}</span>
-          </div>
-          <div class="trip-stat-item">
-            <i class="fas fa-user-friends"></i>
-            <span>Tu itinerario personalizado</span>
-          </div>
-        </div>
-      </div>
+    <div class="itinerary-header">
+      <h2>Itinerario para ${destino}</h2>
+      <p>Del ${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
     </div>
   `;
   
@@ -1305,154 +1276,154 @@ function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   localStorage.setItem('currentStartDate', fechaInicio);
   localStorage.setItem('currentEndDate', fechaFin);
   
-  // Resto del código para procesar los días...
+  // Dividir el itinerario por días
+  const dayRegex = /## Día \d+.*?(?=\n|$)/g;
+  const dayMatches = [...respuesta.matchAll(dayRegex)];
+  
+  // Calculate expected number of days
+  const start = new Date(fechaInicio);
+  const end = new Date(fechaFin);
+  const expectedDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  
+  if (dayMatches.length === 0 || dayMatches.length < expectedDays) {
+    console.warn(`Expected ${expectedDays} days but found ${dayMatches.length}. Using fallback processing.`);
+    
+    // If no days found or fewer than expected, try alternative processing
+    const lines = respuesta.split('\n');
+    let currentDay = 0;
+    let dayContent = '';
+    let processingDay = false;
+    
+    lines.forEach(line => {
+      if (line.match(/^## Día \d+/i) || line.match(/^Día \d+/i)) {
+        // If we were already processing a day, save it
+        if (processingDay && dayContent) {
+          crearSeccionDia(`Día ${currentDay}`, dayContent, currentDay);
+        }
+        
+        // Start a new day
+        currentDay++;
+        dayContent = line + '\n';
+        processingDay = true;
+      } else if (processingDay) {
+        // Continue adding content to the current day
+        dayContent += line + '\n';
+      }
+    });
+    
+    // Save the last day if needed
+    if (processingDay && dayContent) {
+      crearSeccionDia(`Día ${currentDay}`, dayContent, currentDay);
+    }
+  } else {
+    // Original processing if days were found properly
+    for (let i = 0; i < dayMatches.length; i++) {
+      const dayTitleMatch = dayMatches[i];
+      const dayTitle = dayTitleMatch[0];
+      const dayStart = dayTitleMatch.index;
+      const dayEnd = (i < dayMatches.length - 1) ? dayMatches[i + 1].index : respuesta.length;
+      
+      const dayContent = respuesta.substring(dayStart, dayEnd);
+      crearSeccionDia(dayTitle, dayContent, i + 1);
+    }
+  }
+  
+  // Mostrar los botones de acción principales
+  actionButtons.style.display = 'flex';
+  
+  // Asegurarse de que la tarjeta de respuesta sea visible
+  responseCard.style.display = 'block';
+  
+  // Desplazarse hasta el resultado
+  responseCard.scrollIntoView({ behavior: 'smooth' });
+  
+  // Guardar el itinerario actual en el historial
+  guardarItinerarioEnHistorial(destino, fechaInicio, fechaFin, respuesta);
+  
+  // Add this to procesarRespuesta where we check for expected days
+  if (dayMatches.length < expectedDays) {
+    const warningBanner = document.createElement('div');
+    warningBanner.className = 'warning-banner';
+    warningBanner.innerHTML = `
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>Se esperaban ${expectedDays} días, pero solo se generaron ${dayMatches.length}. 
+      Considera regenerar el itinerario o editar manualmente los días faltantes.</span>
+      <button id="regenerate-all-btn" class="warning-action-btn">
+        <i class="fas fa-sync-alt"></i> Regenerar Completo
+      </button>
+    `;
+    responseBox.insertBefore(warningBanner, responseBox.firstChild);
+    
+    // Add event listener for the regenerate button
+    document.getElementById('regenerate-all-btn').addEventListener('click', regenerarItinerario);
+  }
 }
 
-// Función auxiliar para calcular la duración del viaje
-function calcularDuracionViaje(fechaInicio, fechaFin) {
-  const inicio = new Date(fechaInicio);
-  const fin = new Date(fechaFin);
-  const duracion = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
-  return duracion;
-}
-
-// Mejora de la función para convertir Markdown a un formato visual más atractivo
+// Enhanced function to format markdown content properly
 function procesarTextoMarkdown(texto) {
   if (!texto) return '';
   
-  // Procesar las cabeceras
+  // Replace markdown headings with HTML
   texto = texto.replace(/^# (.*$)/gm, '<h1>$1</h1>')
                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
                .replace(/^### (.*$)/gm, '<h3>$1</h3>');
   
-  // Transformar actividades en tarjetas visuales
-  texto = texto.replace(/^- (\d{1,2}:\d{2})(.+?)(\n(?!-)|\n$|$)/gms, function(match, hora, contenido, final) {
-    // Extraer dirección para el mapa
-    const direccionMatch = contenido.match(/Dirección: ([^.]+)/i);
-    const direccion = direccionMatch ? direccionMatch[1].trim() : '';
-    
-    // Extraer costo
-    const costoMatch = contenido.match(/(€\d+|\$\d+|\d+€|\d+\$)/g);
-    const costo = costoMatch ? costoMatch[0] : '';
-    
-    // Determinar icono para la actividad
-    let actividadIcono = 'fa-map-marker-alt';
-    if (contenido.toLowerCase().includes('desayuno') || contenido.toLowerCase().includes('almuerzo') || 
-        contenido.toLowerCase().includes('cena') || contenido.toLowerCase().includes('restaurante')) {
-      actividadIcono = 'fa-utensils';
-    } else if (contenido.toLowerCase().includes('museo') || contenido.toLowerCase().includes('galería')) {
-      actividadIcono = 'fa-landmark';
-    } else if (contenido.toLowerCase().includes('hotel') || contenido.toLowerCase().includes('alojamiento')) {
-      actividadIcono = 'fa-bed';
-    } else if (contenido.toLowerCase().includes('parque') || contenido.toLowerCase().includes('jardín')) {
-      actividadIcono = 'fa-tree';
-    }
-    
-    // Extraer título principal
-    let titulo = '';
-    if (contenido.includes('-')) {
-      titulo = contenido.split('-')[1].trim();
-      if (titulo.includes('.')) {
-        titulo = titulo.split('.')[0].trim();
-      }
-    } else {
-      titulo = contenido.split('.')[0].trim();
-    }
-    
-    // Crear mapa integrado (si hay dirección)
-    const mapaHTML = direccion ? 
-      `<div class="activity-map">
-        <iframe 
-          src="https://maps.google.com/maps?q=${encodeURIComponent(direccion)}&output=embed" 
-          allowfullscreen>
-        </iframe>
-      </div>` : '';
-    
-    // Extraer enlaces
-    const urlMatch = contenido.match(/\((https?:\/\/[^\s\)]+)\)/);
-    const url = urlMatch ? urlMatch[1] : '';
-    const botonEnlace = url ? 
-      `<a href="${url}" target="_blank" class="itinerary-link">
-        <i class="fas fa-external-link-alt"></i> Ver sitio web
-      </a>` : '';
-    
-    // Reemplazar la información de transporte con etiquetas
-    const transporteMatch = contenido.match(/Transporte: ([^.]+)/i);
-    let transporteInfo = '';
-    if (transporteMatch) {
-      const textoTransporte = transporteMatch[1].trim();
-      let iconoTransporte = 'fa-route';
-      
-      if (textoTransporte.toLowerCase().includes('caminando') || textoTransporte.toLowerCase().includes('a pie')) {
-        iconoTransporte = 'fa-walking';
-      } else if (textoTransporte.toLowerCase().includes('metro')) {
-        iconoTransporte = 'fa-subway';
-      } else if (textoTransporte.toLowerCase().includes('bus') || textoTransporte.toLowerCase().includes('autobús')) {
-        iconoTransporte = 'fa-bus';
-      } else if (textoTransporte.toLowerCase().includes('tren')) {
-        iconoTransporte = 'fa-train';
-      } else if (textoTransporte.toLowerCase().includes('taxi')) {
-        iconoTransporte = 'fa-taxi';
-      }
-      
-      transporteInfo = `
-        <span class="activity-info-tag">
-          <i class="fas ${iconoTransporte}"></i> ${textoTransporte}
-        </span>`;
-    }
-    
-    // Crear HTML para la tarjeta
-    return `
-      <div class="activity-card">
-        <div class="activity-header">
-          <div class="activity-time">
-            <i class="fas fa-clock"></i> ${hora}
-          </div>
-          <div class="activity-type">
-            <i class="fas ${actividadIcono}"></i>
-          </div>
-        </div>
-        <div class="activity-content">
-          <h4>${titulo}</h4>
-          <p>${contenido.replace(/Dirección: [^.]+/i, '').replace(/Transporte: [^.]+/i, '')}</p>
-          ${mapaHTML}
-        </div>
-        <div class="activity-footer">
-          ${transporteInfo}
-          ${direccion ? `
-            <span class="activity-info-tag">
-              <i class="fas fa-map-marker-alt"></i> ${direccion}
-            </span>` : ''}
-          ${costo ? `
-            <span class="activity-info-tag">
-              <i class="fas fa-euro-sign"></i> ${costo}
-            </span>` : ''}
-          ${botonEnlace}
-        </div>
-      </div>`;
+  // Remove double asterisks around time indicators
+  texto = texto.replace(/\*\*(\d{1,2}:\d{2})\*\*/g, '$1');
+  
+  // Format time indicators with icons (after removing asterisks)
+  texto = texto.replace(/(\d{1,2}:\d{2})/g, '<span class="time-tag"><i class="fas fa-clock"></i> $1</span>');
+  
+  // Clean up any remaining double asterisks around other text
+  texto = texto.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Format transportation methods
+  texto = texto.replace(/Transporte: ([^<\n.]*)/g, '<span class="transport-tag"><i class="fas fa-route"></i> $1</span>');
+  
+  // Format reservation indicators
+  texto = texto.replace(/\[BOOK\]|\[RESERVAR\]/g, '<span class="reservation-tag"><i class="fas fa-calendar-check"></i> RESERVAR</span>');
+  
+  // Convert URLs to clickable links
+  texto = texto.replace(/\((https?:\/\/[^\s\)]+)\)/g, (match, url) => {
+    return `(<a href="${url}" class="itinerary-link" target="_blank" title="${url}">${formatearURL(url)}</a>)`;
   });
   
-  // Procesar el resto del texto
-  // ... resto del código procesarTextoMarkdown ...
+  // Convert bullet points to list items
+  texto = texto.replace(/^- (.*$)/gm, '<li>$1</li>');
+  
+  // Wrap lists in <ul> tags
+  texto = texto.replace(/(<li>.*?<\/li>)+/gs, match => '<ul>' + match + '</ul>');
+  
+  // Fix any duplicate <ul> tags
+  texto = texto.replace(/<\/ul>\s*<ul>/g, '');
+  
+  // Enhance the tips section
+  texto = texto.replace(/<h3>(CONSEJOS DEL DÍA.*?)<\/h3>/g, 
+                       '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> $1</h3>');
   
   return texto;
 }
 
 // Function to create a day section
 function crearSeccionDia(titulo, contenido, numDia) {
+  // Get content without the title that's already in the header
+  let dayContent = contenido;
+  
+  // If the content starts with the title (in markdown format), remove it
+  const titleRegex = new RegExp(`^## ${titulo}`, 'i');
+  dayContent = dayContent.replace(titleRegex, '');
+  
+  // Also remove plain text title if it exists
+  const plainTitleRegex = new RegExp(`^${titulo}`, 'i');
+  dayContent = dayContent.replace(plainTitleRegex, '');
+  
   // Convert markdown to HTML for the day content
-  const dayHtml = procesarTextoMarkdown(contenido);
+  const dayHtml = procesarTextoMarkdown(dayContent);
   
   // Create the day container with controls
   const dayContainer = document.createElement('div');
   dayContainer.className = 'day-section';
   dayContainer.id = `day-${numDia}`;
-  
-  // Extraer actividades para la línea de tiempo
-  const actividadesMatch = contenido.match(/^- \d{1,2}:\d{2}.*$/gm);
-  const actividades = actividadesMatch || [];
-  
-  // HTML para la sección de día
   dayContainer.innerHTML = `
     <div class="day-header">
       <h2>${titulo}</h2>
@@ -1465,29 +1436,15 @@ function crearSeccionDia(titulo, contenido, numDia) {
         </button>
       </div>
     </div>
-    <div class="timeline-wrapper"></div>
-    <div class="map-wrapper"></div>
     <div class="day-content">
       ${dayHtml}
     </div>
   `;
   
-  // Agregar al responseBox
+  // Add container to responseBox
   responseBox.appendChild(dayContainer);
   
-  // Crear y añadir la línea de tiempo
-  if (actividades.length > 0) {
-    const timeline = crearLineaTiempo(numDia, actividades);
-    dayContainer.querySelector('.timeline-wrapper').appendChild(timeline);
-    
-    // Crear y añadir el mapa principal
-    const mapa = crearMapaPrincipal(numDia, contenido);
-    if (mapa) {
-      dayContainer.querySelector('.map-wrapper').appendChild(mapa);
-    }
-  }
-  
-  // Configurar edición de actividades
+  // Make activities editable
   setupActivityEditing(dayContainer, numDia);
 }
 
@@ -1522,7 +1479,7 @@ function setupActivityEditing(dayContainer, numDia) {
     }
   });
   
-  // Add special class to tips section
+  // Add special class to tips section but DON'T add the warning text
   const tipsHeader = dayContainer.querySelector('.tips-header');
   if (tipsHeader) {
     const tipsSection = tipsHeader.parentNode;
@@ -2743,52 +2700,23 @@ function generarSystemPrompt() {
   
   // Reglas para el formato
   systemPrompt += "REGLAS OBLIGATORIAS DE FORMATO:\n";
-  systemPrompt += "1. Crea un itinerario para CADA DÍA del viaje, sin excepción.\n";
+  systemPrompt += "1. Crea un itinerario para CADA DÍA del viaje, sin excepción. Si el viaje es de 5 días, necesito 5 días completos en el itinerario.\n";
   systemPrompt += "2. Estructura clara con encabezados H2 para días (## Día 1, ## Día 2, etc.)\n";
   systemPrompt += "3. Actividades listadas cronológicamente con horarios específicos (09:00, 14:30, etc.)\n";
-  systemPrompt += "4. Cada día DEBE incluir una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas\n";
-  systemPrompt += "5. Al final de cada día, incluye una sección '### PRESUPUESTO DEL DÍA' con el costo estimado de todas las actividades, comidas y transporte\n\n";
+  systemPrompt += "4. Cada día DEBE incluir una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas\n\n";
   
-  // Nuevas reglas de detalle para transporte y costos
-  systemPrompt += "DETALLES OBLIGATORIOS DE TRANSPORTE Y COSTOS:\n";
-  systemPrompt += "1. DISTANCIAS: Especifica la distancia exacta entre ubicaciones (en metros o cuadras). Ejemplo: 'A 500 metros' o 'A 3 cuadras'\n";
-  systemPrompt += "2. TRANSPORTE PÚBLICO: Especifica líneas exactas a tomar. Ejemplo: 'Metro Línea 4 desde Estación X hasta Estación Y'\n";
-  systemPrompt += "3. TIEMPO DE VIAJE: Indica cuánto tiempo tomará llegar de un lugar a otro. Ejemplo: '15 minutos caminando' o '25 minutos en metro'\n";
-  systemPrompt += "4. COSTOS INDIVIDUALES: Proporciona el costo estimado de cada actividad, comida y transporte\n";
-  systemPrompt += "5. PRESUPUESTO DIARIO: Al final de cada día, suma todos los gastos estimados\n";
-  systemPrompt += "6. PRESUPUESTO TOTAL: Al final del itinerario, añade un '## PRESUPUESTO TOTAL' con el costo estimado de todo el viaje\n\n";
-  
-  // Reglas para los links y reservas (existentes)
+  // Reglas para los links y reservas
   systemPrompt += "ELEMENTOS OBLIGATORIOS EN CADA ACTIVIDAD:\n";
   systemPrompt += "1. LINKS: CADA atracción, restaurante, y lugar mencionado DEBE incluir un URL real entre paréntesis. Ejemplo: 'Museo del Prado (https://www.museodelprado.es/)'\n";
-  systemPrompt += "2. DIRECCIÓN: Incluye la dirección física exacta de cada lugar. Ejemplo: 'Dirección: Calle de Ruiz de Alarcón 23, 28014 Madrid'\n";
-  systemPrompt += "3. RESERVAS: Marca con [RESERVAR] los lugares donde sea necesario o recomendable reservar.\n";
-  systemPrompt += "4. TRANSPORTE: Especifica el medio de transporte entre cada actividad con todos los detalles mencionados anteriormente, EVITANDO el uso de guiones o viñetas.\n\n";
+  systemPrompt += "2. RESERVAS: Marca con [RESERVAR] los lugares donde sea necesario o recomendable reservar. Ejemplo: 'Restaurante Botín [RESERVAR] (https://botin.es/)'\n";
+  systemPrompt += "3. TRANSPORTE: Especifica el medio de transporte entre cada actividad\n\n";
   
-  // Reglas para el contenido (existentes)
+  // Reglas para el contenido
   systemPrompt += "CONTENIDO OBLIGATORIO:\n";
   systemPrompt += "1. Adapta el itinerario exactamente a las fechas indicadas (todos los días)\n";
   systemPrompt += "2. Incluye opciones específicas para los intereses mencionados\n";
   systemPrompt += "3. Respeta estrictamente el presupuesto y ritmo de viaje indicados\n";
   systemPrompt += "4. Cada día debe incluir al menos 4-5 actividades principales con tiempos y duraciones realistas\n";
-  systemPrompt += "5. Ajusta todas las recomendaciones al presupuesto especificado (bajo/medio/alto)\n\n";
-  
-  // Ejemplo de formato para clarificar
-  systemPrompt += "EJEMPLO DE FORMATO DE ACTIVIDAD:\n";
-  systemPrompt += "- 09:30 - Visita al Museo del Louvre (https://www.louvre.fr/) - Entrada: €15 - Transporte: Metro Línea 1, Estación Palais-Royal (15 minutos, €1.90) - A 800 metros del hotel\n";
-  systemPrompt += "- 12:30 - Almuerzo en Café de Flore [RESERVAR] (https://cafedeflore.fr/) - Costo aproximado: €25-30 - Transporte: Caminando 400 metros (5 minutos)\n\n";
-  
-  systemPrompt += "EJEMPLO DE PRESUPUESTO DIARIO:\n";
-  systemPrompt += "### PRESUPUESTO DEL DÍA\n";
-  systemPrompt += "- Atracciones: €45 (Museo €15, Torre Eiffel €30)\n";
-  systemPrompt += "- Comidas: €60 (Desayuno €10, Almuerzo €25, Cena €25)\n";
-  systemPrompt += "- Transporte: €15 (Metro €7, Taxi €8)\n";
-  systemPrompt += "- TOTAL DÍA 1: €120\n\n";
-  
-  // Actualizar el ejemplo de formato de actividad
-  systemPrompt += "EJEMPLO DE FORMATO DE ACTIVIDAD SIN GUIONES NI VIÑETAS:\n";
-  systemPrompt += "09:30 Visita al Museo del Louvre (https://www.louvre.fr/) - Entrada: €15. Dirección: Rue de Rivoli, 75001 París. Transporte: Metro Línea 1, Estación Palais-Royal (15 minutos, €1.90). A 800 metros del hotel.\n";
-  systemPrompt += "12:30 Almuerzo en Café de Flore [RESERVAR] (https://cafedeflore.fr/) - Costo aproximado: €25-30. Dirección: 172 Boulevard Saint-Germain, 75006 París. Transporte: Caminando 400 metros (5 minutos).\n\n";
   
   return systemPrompt;
 }
@@ -3243,7 +3171,7 @@ function procesarContenidoCompleto(contenido) {
 
 // Actualizar la función callAssistantWithBrowsing para usar GPT-4o y navegación web
 async function callAssistantWithBrowsing(promptText, systemPrompt, apiKey) {
-  console.log("Llamando a la API de OpenAI con GPT-4o y navegación web");
+  console.log("Llamando a OpenAI Assistant API con capacidad de navegación web");
   
   try {
     // Paso 1: Crear un asistente con GPT-4o y configurar navegación web con 'function'
@@ -3521,7 +3449,7 @@ async function checkRunStatus(threadId, runId, apiKey) {
   return response.json();
 }
 
-// Actualizado para usar la API de chat directamente con GPT-4o
+// Add fallback method to use GPT-4o directly
 async function callGPT4oDirectly(promptText, systemPrompt, apiKey) {
   console.log("Llamando directamente a la API de Chat con GPT-4o");
   
@@ -3553,263 +3481,4 @@ async function callGPT4oDirectly(promptText, systemPrompt, apiKey) {
     console.error("Error en callGPT4oDirectly:", error);
     throw error;
   }
-}
-
-// Función mejorada para crear una línea de tiempo visual del itinerario
-function crearLineaTiempo(numDia, actividades) {
-  const timelineContainer = document.createElement('div');
-  timelineContainer.className = 'timeline-container';
-  timelineContainer.id = `timeline-day-${numDia}`;
-  
-  // Crear título para la línea de tiempo
-  const timelineTitle = document.createElement('h3');
-  timelineTitle.className = 'timeline-title';
-  timelineTitle.innerHTML = '<i class="fas fa-clock"></i> Cronograma del Día';
-  timelineContainer.appendChild(timelineTitle);
-  
-  // Crear el elemento para la línea de tiempo
-  const timelineElement = document.createElement('div');
-  timelineElement.className = 'timeline-element';
-  timelineElement.id = `timeline-element-${numDia}`;
-  timelineContainer.appendChild(timelineElement);
-  
-  // Crear datasets para la línea de tiempo
-  const items = new vis.DataSet();
-  
-  // Agregar actividades a la línea de tiempo
-  actividades.forEach((actividad, index) => {
-    // Extraer la hora del texto de la actividad
-    const horaMatch = actividad.match(/(\d{1,2}:\d{2})/);
-    if (horaMatch) {
-      const hora = horaMatch[1];
-      const [h, m] = hora.split(':').map(Number);
-      
-      // Crear fecha para la línea de tiempo
-      const fecha = new Date();
-      fecha.setHours(h, m, 0);
-      
-      // Determinar el tipo de actividad para elegir un icono y color
-      let icono = 'fas fa-map-marker-alt';
-      let color = '#3498db';
-      let grupo = 1;
-      
-      if (actividad.toLowerCase().includes('desayuno')) {
-        icono = 'fas fa-coffee';
-        color = '#e67e22';
-        grupo = 2;
-      } else if (actividad.toLowerCase().includes('almuerzo') || 
-                actividad.toLowerCase().includes('cena') || 
-                actividad.toLowerCase().includes('comida')) {
-        icono = 'fas fa-utensils';
-        color = '#e74c3c';
-        grupo = 2;
-      } else if (actividad.toLowerCase().includes('museo') || 
-                actividad.toLowerCase().includes('galería') || 
-                actividad.toLowerCase().includes('exposición')) {
-        icono = 'fas fa-landmark';
-        color = '#9b59b6';
-        grupo = 3;
-      } else if (actividad.toLowerCase().includes('parque') || 
-                actividad.toLowerCase().includes('jardín')) {
-        icono = 'fas fa-tree';
-        color = '#2ecc71';
-        grupo = 4;
-      } else if (actividad.toLowerCase().includes('iglesia') || 
-                actividad.toLowerCase().includes('catedral')) {
-        icono = 'fas fa-church';
-        color = '#f1c40f';
-        grupo = 5;
-      } else if (actividad.toLowerCase().includes('tienda') || 
-                actividad.toLowerCase().includes('compras')) {
-        icono = 'fas fa-shopping-bag';
-        color = '#1abc9c';
-        grupo = 6;
-      }
-      
-      // Extraer título
-      let titulo = actividad.replace(/^\d{1,2}:\d{2}/, '').trim();
-      if (titulo.includes('-')) {
-        titulo = titulo.split('-')[0].trim();
-      }
-      
-      // Agregar a la línea de tiempo
-      items.add({
-        id: index,
-        content: `<div class="timeline-item" style="background-color:${color};">
-                   <i class="${icono}"></i> <span>${titulo}</span>
-                 </div>`,
-        start: fecha,
-        group: grupo,
-        style: `color:${color};`
-      });
-    }
-  });
-  
-  // Crear grupos para categorizar las actividades
-  const groups = new vis.DataSet([
-    {id: 1, content: 'Lugares de interés'},
-    {id: 2, content: 'Comidas'},
-    {id: 3, content: 'Cultura'},
-    {id: 4, content: 'Naturaleza'},
-    {id: 5, content: 'Religioso'},
-    {id: 6, content: 'Compras'}
-  ]);
-  
-  // Configuración de la línea de tiempo
-  const options = {
-    orientation: 'top',
-    height: '250px',
-    min: new Date(new Date().setHours(6, 0, 0)),
-    max: new Date(new Date().setHours(23, 59, 0)),
-    stack: false,
-    zoomable: true,
-    zoomMin: 1000 * 60 * 60 * 4, // 4 horas mínimo de zoom
-    zoomMax: 1000 * 60 * 60 * 24, // 1 día máximo de zoom
-    format: {
-      minorLabels: {
-        hour: 'HH:mm',
-      }
-    },
-    timeAxis: {scale: 'hour', step: 1},
-    showCurrentTime: false
-  };
-  
-  // Crear la línea de tiempo
-  const timeline = new vis.Timeline(timelineElement, items, groups, options);
-  
-  // Agregar navegación por horas 
-  const timelineNav = document.createElement('div');
-  timelineNav.className = 'timeline-navigation';
-  timelineNav.innerHTML = `
-    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'morning')">
-      <i class="fas fa-sun"></i> Mañana
-    </button>
-    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'noon')">
-      <i class="fas fa-cloud-sun"></i> Mediodía
-    </button>
-    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'afternoon')">
-      <i class="fas fa-cloud"></i> Tarde
-    </button>
-    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'evening')">
-      <i class="fas fa-moon"></i> Noche
-    </button>
-    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'all')">
-      <i class="fas fa-calendar-day"></i> Todo el día
-    </button>
-  `;
-  timelineContainer.appendChild(timelineNav);
-  
-  return timelineContainer;
-}
-
-// Función para navegar por la línea de tiempo
-function zoomTimeline(timelineId, period) {
-  const timeline = document.getElementById(timelineId);
-  const timelineInstance = timeline._timeline; // Acceder a la instancia
-
-  if (!timelineInstance) return;
-  
-  const today = new Date();
-  let start, end;
-  
-  switch(period) {
-    case 'morning':
-      start = new Date(today.setHours(6, 0, 0));
-      end = new Date(today.setHours(12, 0, 0));
-      break;
-    case 'noon':
-      start = new Date(today.setHours(11, 0, 0));
-      end = new Date(today.setHours(15, 0, 0));
-      break;
-    case 'afternoon':
-      start = new Date(today.setHours(14, 0, 0));
-      end = new Date(today.setHours(19, 0, 0));
-      break;
-    case 'evening':
-      start = new Date(today.setHours(18, 0, 0));
-      end = new Date(today.setHours(23, 59, 0));
-      break;
-    case 'all':
-    default:
-      start = new Date(today.setHours(6, 0, 0));
-      end = new Date(today.setHours(23, 59, 0));
-  }
-  
-  timelineInstance.setWindow(start, end);
-}
-
-// Función para crear un mapa principal con todas las ubicaciones del día
-function crearMapaPrincipal(numDia, contenido) {
-  // Extraer todas las direcciones del contenido del día
-  const direcciones = [];
-  const actividadesMatch = contenido.match(/^- \d{1,2}:\d{2}.*?Dirección: ([^.]+)/gmi);
-  
-  if (!actividadesMatch || actividadesMatch.length === 0) {
-    return ''; // No hay direcciones para mostrar
-  }
-  
-  // Procesar cada actividad para extraer hora, título y dirección
-  actividadesMatch.forEach(act => {
-    const horaMatch = act.match(/(\d{1,2}:\d{2})/);
-    const direccionMatch = act.match(/Dirección: ([^.]+)/i);
-    
-    if (horaMatch && direccionMatch) {
-      const hora = horaMatch[1];
-      const direccion = direccionMatch[1].trim();
-      
-      // Extraer título de la actividad
-      let titulo = act.replace(/^- \d{1,2}:\d{2}/, '').trim();
-      if (titulo.includes('-')) {
-        titulo = titulo.split('-')[0].trim();
-      } else if (titulo.includes('.')) {
-        titulo = titulo.split('.')[0].trim();
-      }
-      
-      direcciones.push({
-        hora,
-        titulo,
-        direccion
-      });
-    }
-  });
-  
-  // Si no hay direcciones después de procesar, retornar vacío
-  if (direcciones.length === 0) {
-    return '';
-  }
-  
-  // Crear contenedor para el mapa
-  const mapContainer = document.createElement('div');
-  mapContainer.className = 'day-map-container';
-  mapContainer.id = `map-day-${numDia}`;
-  
-  // HTML para el mapa
-  const locationsParam = direcciones.map(d => encodeURIComponent(d.direccion)).join('|');
-  
-  mapContainer.innerHTML = `
-    <h3 class="map-title"><i class="fas fa-map-marked-alt"></i> Mapa del Día ${numDia}</h3>
-    <div class="day-map">
-      <iframe
-        width="100%"
-        height="350"
-        style="border:0"
-        loading="lazy"
-        allowfullscreen
-        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCAQ45BgdesHgI5OIlwKI_-F-z5Q8tjKTM&q=${direcciones[0].direccion}">
-      </iframe>
-    </div>
-    <div class="day-locations">
-      ${direcciones.map((d, i) => `
-        <div class="location-item">
-          <div class="location-marker">${i+1}</div>
-          <div class="location-details">
-            <div class="location-time">${d.hora}</div>
-            <div class="location-title">${d.titulo}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `;
-  
-  return mapContainer;
 }
