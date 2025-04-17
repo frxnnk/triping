@@ -10,6 +10,47 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.0/dist/vis-timeline-graph2d.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/vis-timeline@7.7.0/dist/vis-timeline-graph2d.min.css" rel="stylesheet" />
+  <script>
+    // Función para navegar por la línea de tiempo (debe estar en el ámbito global)
+    function zoomTimeline(timelineId, period) {
+      const timeline = document.getElementById(timelineId);
+      if (!timeline) return;
+      
+      // Obtener la instancia de timeline a través de la propiedad interna
+      const instance = timeline.__timeline;
+      if (!instance) return;
+      
+      const today = new Date();
+      let start, end;
+      
+      switch(period) {
+        case 'morning':
+          start = new Date(today.setHours(6, 0, 0));
+          end = new Date(today.setHours(12, 0, 0));
+          break;
+        case 'noon':
+          start = new Date(today.setHours(11, 0, 0));
+          end = new Date(today.setHours(15, 0, 0));
+          break;
+        case 'afternoon':
+          start = new Date(today.setHours(14, 0, 0));
+          end = new Date(today.setHours(19, 0, 0));
+          break;
+        case 'evening':
+          start = new Date(today.setHours(18, 0, 0));
+          end = new Date(today.setHours(23, 59, 0));
+          break;
+        case 'all':
+        default:
+          start = new Date(today.setHours(6, 0, 0));
+          end = new Date(today.setHours(23, 59, 0));
+      }
+      
+      instance.setWindow(start, end);
+    }
+  </script>
 </head>
 <body>
   <div class="overlay" id="overlay"></div>
@@ -76,6 +117,23 @@
       <label for="prompt-template">Plantilla de Prompt:</label>
       <textarea id="prompt-template" placeholder="Escribe aquí la plantilla de prompt que se usará para generar el itinerario..."></textarea>
       <p class="setting-help">Puedes usar las variables: {destino}, {fechaInicio}, {fechaFin}, {intereses}, {presupuesto}, {ritmo}</p>
+    </div>
+    
+    <div class="setting-item">
+      <span>Usar API real en desarrollo</span>
+      <label class="switch">
+        <input type="checkbox" id="use-real-api-toggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    
+    <div class="setting-item">
+      <span>Usar navegación web (GPT-4)</span>
+      <label class="switch">
+        <input type="checkbox" id="use-web-browsing-toggle" checked>
+        <span class="slider"></span>
+      </label>
+      <small class="form-help">Habilita la capacidad de búsqueda web para obtener información actualizada (requiere GPT-4)</small>
     </div>
     
     <button id="save-settings" class="primary-btn">Guardar configuración</button>

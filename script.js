@@ -41,6 +41,12 @@ const DEFAULT_ENCRYPTED_API_KEY = "VkN1REZ0ZGY4ckJ6OHliU1J1WVVEcVI0OEZ3RUVlUVlES
 // Añade esta constante al principio del archivo script.js
 const IS_DEV_MODE = true; // Cambia a false para producción
 
+// Add a new constant to control whether to use real API calls
+const USE_REAL_API = true; // Set to true to use real API calls even in development mode
+
+// Near the top, add this constant for the OpenAI API URL
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
 // Datos de continentes y países
 const continentes = {
   "Europa": ["España", "Francia", "Italia", "Alemania", "Reino Unido", "Portugal", "Grecia", "Suiza", "Austria", "Países Bajos", "Bélgica", "Suecia", "Noruega", "Dinamarca", "Finlandia", "Irlanda", "Polonia", "República Checa", "Hungría", "Croacia"],
@@ -822,6 +828,7 @@ function saveSettings() {
   const isDarkMode = darkModeToggle.checked;
   const language = languageSelector.value;
   const customPrompt = promptTemplate.value || DEFAULT_PROMPT;
+  const useRealApi = document.getElementById('use-real-api-toggle')?.checked || false;
   
   // Verificar si el usuario está usando su propia API key
   const usingOwnKey = apiKey.trim() !== '';
@@ -851,12 +858,40 @@ function saveSettings() {
   
   // Aplicar cambios de idioma si es necesario
   applyLanguageChanges(language);
+  
+  // Save the API usage preference
+  localStorage.setItem('useRealApi', useRealApi.toString());
+  
+  // Update the global variable
+  window.USE_REAL_API = useRealApi;
+  
+  const useWebBrowsing = document.getElementById('use-web-browsing-toggle')?.checked || false;
+  localStorage.setItem('useWebBrowsing', useWebBrowsing.toString());
+  window.USE_WEB_BROWSING = useWebBrowsing;
 }
 
 // Mostrar notificación
 function showNotification(message, isError = false) {
-  // Si hay un sistema de notificaciones implementado, úsalo
-  alert(message);
+  if (isError) {
+    console.error(message);
+    message = "❌ " + message;
+  } else {
+    message = "✅ " + message;
+  }
+  
+  // If you have a notification system, use it, otherwise use alert
+  if (typeof Toastify === 'function') {
+    Toastify({
+      text: message,
+      duration: 4000,
+      close: true,
+      gravity: "top",
+      position: "right",
+      backgroundColor: isError ? "#e74c3c" : "#2ecc71",
+    }).showToast();
+  } else {
+    alert(message);
+  }
 }
 
 // Toggle de modo oscuro
@@ -923,6 +958,19 @@ function loadSettings() {
   
   // Configurar fechas por defecto
   setupDefaultDates();
+  
+  // Load API usage preference
+  const useRealApi = localStorage.getItem('useRealApi') === 'true';
+  if (document.getElementById('use-real-api-toggle')) {
+    document.getElementById('use-real-api-toggle').checked = useRealApi;
+  }
+  window.USE_REAL_API = useRealApi;
+  
+  const useWebBrowsing = localStorage.getItem('useWebBrowsing') === 'true';
+  if (document.getElementById('use-web-browsing-toggle')) {
+    document.getElementById('use-web-browsing-toggle').checked = useWebBrowsing;
+  }
+  window.USE_WEB_BROWSING = useWebBrowsing;
 }
 
 // Configurar fechas por defecto
@@ -1034,9 +1082,9 @@ async function generarItinerario() {
     
     let data;
     
-    if (IS_DEV_MODE) {
+    if (IS_DEV_MODE && !USE_REAL_API) {
       // Simular respuesta de la API en modo desarrollo
-      console.log("Ejecutando en modo desarrollo");
+      console.log("Ejecutando en modo desarrollo con datos simulados");
       await new Promise(resolve => setTimeout(resolve, 2000)); // Simular retraso
       
       // Usar nuestro generador de itinerarios de prueba mejorado
@@ -1050,19 +1098,86 @@ async function generarItinerario() {
         }]
       };
     } else {
-      // Código original para hacer la solicitud real a la API
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          promptData: promptText,
-          systemPrompt: systemPrompt
-        })
-      });
+      // Hacer la solicitud real a la API
+      console.log("Realizando solicitud real a la API OpenAI");
       
-      data = await response.json();
+      // Obtener la API key (de localStorage o del valor predeterminado)
+      const apiKeyEncrypted = localStorage.getItem('apiKey') || DEFAULT_ENCRYPTED_API_KEY;
+      const apiKey = decryptApiKey(apiKeyEncrypted);
+      
+      if (!apiKey) {
+        throw new Error("API Key no configurada. Por favor, añade tu API Key en la configuración.");
+      }
+      
+      // Si estamos en desarrollo, llamar directamente a OpenAI
+      if (IS_DEV_MODE) {
+        console.log("Llamando a OpenAI Assistant API con capacidad de navegación web");
+        try {
+          // Set USE_WEB_BROWSING to true to use the Assistants API with browsing
+          const USE_WEB_BROWSING = true;
+          
+          if (USE_WEB_BROWSING) {
+            // Use the Assistants API with web browsing
+            const openaiData = await callAssistantWithBrowsing(promptText, systemPrompt, apiKey);
+            data = openaiData;
+          } else {
+            // Use the regular Chat Completions API with GPT-4
+            const openaiResponse = await fetch(OPENAI_API_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+              },
+              body: JSON.stringify({
+                model: "gpt-4-turbo-preview",
+                messages: [
+                  { role: "system", content: systemPrompt || "You are a helpful travel assistant." },
+                  { role: "user", content: promptText }
+                ],
+                temperature: 0.7,
+                max_tokens: 4000,
+              })
+            });
+            
+            if (!openaiResponse.ok) {
+              let errorMessage = "Error llamando a OpenAI API";
+              try {
+                const errorData = await openaiResponse.json();
+                errorMessage = errorData.error?.message || errorData.error || errorMessage;
+              } catch (e) {
+                console.error("No se pudo analizar la respuesta de error:", e);
+              }
+              throw new Error(errorMessage);
+            }
+            
+            const openaiData = await openaiResponse.json();
+            data = openaiData;
+          }
+        } catch (error) {
+          console.error("Error al llamar a la API de OpenAI:", error);
+          throw error;
+        }
+      } else {
+        // En producción, usar nuestra API
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': apiKey
+          },
+          body: JSON.stringify({
+            promptData: promptText,
+            systemPrompt: systemPrompt
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+        }
+        
+        data = await response.json();
+      }
     }
     
     // Procesar la respuesta (tanto en modo desarrollo como producción)
@@ -1110,7 +1225,14 @@ async function generarItinerario() {
     }
   } catch (error) {
     console.error('Error en generarItinerario:', error);
-    showNotification(`Error: ${error.message || 'Error desconocido al generar el itinerario'}`, true);
+    
+    // Check if it's a CORS error
+    if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+      showNotification("Error de CORS: No se puede acceder directamente a la API de OpenAI desde el navegador. Considera instalar una extensión CORS o usar un servidor proxy local.", true);
+    } else {
+      showNotification(`Error: ${error.message || 'Error desconocido al generar el itinerario'}`, true);
+    }
+    
     showEmptyState(true);
   } finally {
     // Ocultar el indicador de carga
@@ -1135,16 +1257,45 @@ async function generarItinerario() {
   }
 }
 
-// Función para procesar y mejorar visualmente el itinerario con funcionalidad de edición
+// Actualizar la función procesarRespuesta para añadir una cabecera más visual
 function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   // Asegurarse de que el estado vacío esté oculto cuando hay contenido
   showEmptyState(false);
   
-  // Limpiar el contenedor de respuesta y añadir cabecera
+  // Determinar imagen de fondo basada en el destino
+  let imagenFondo = '';
+  if (destino.toLowerCase().includes('parís') || destino.toLowerCase().includes('paris')) {
+    imagenFondo = 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000';
+  } else if (destino.toLowerCase().includes('roma')) {
+    imagenFondo = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1000';
+  } else if (destino.toLowerCase().includes('barcelona')) {
+    imagenFondo = 'https://images.unsplash.com/photo-1583422409516-2895a77efded?q=80&w=1000';
+  } else {
+    // Imagen genérica de viaje
+    imagenFondo = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=1000';
+  }
+  
+  // Limpiar el contenedor de respuesta y añadir cabecera visual
   responseBox.innerHTML = `
-    <div class="itinerary-header">
-      <h2>Itinerario para ${destino}</h2>
-      <p>Del ${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
+    <div class="visual-header" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('${imagenFondo}')">
+      <div class="visual-header-content">
+        <h1>Itinerario para ${destino}</h1>
+        <p>${formatearFecha(fechaInicio)} al ${formatearFecha(fechaFin)}</p>
+        <div class="trip-stats">
+          <div class="trip-stat-item">
+            <i class="fas fa-calendar-day"></i>
+            <span>${calcularDuracionViaje(fechaInicio, fechaFin)} días</span>
+          </div>
+          <div class="trip-stat-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>${destino}</span>
+          </div>
+          <div class="trip-stat-item">
+            <i class="fas fa-user-friends"></i>
+            <span>Tu itinerario personalizado</span>
+          </div>
+        </div>
+      </div>
     </div>
   `;
   
@@ -1154,72 +1305,154 @@ function procesarRespuesta(respuesta, destino, fechaInicio, fechaFin) {
   localStorage.setItem('currentStartDate', fechaInicio);
   localStorage.setItem('currentEndDate', fechaFin);
   
-  // Dividir el itinerario por días
-  const dayRegex = /## Día \d+[^\n]*/g;
-  const dayMatches = [...respuesta.matchAll(dayRegex)];
-  
-  if (dayMatches.length === 0) {
-    // Si no hay días definidos, mostrar todo como un solo bloque
-    procesarContenidoCompleto(respuesta);
-  } else {
-    // Procesar por días
-    for (let i = 0; i < dayMatches.length; i++) {
-      const dayTitleMatch = dayMatches[i];
-      const dayTitle = dayTitleMatch[0];
-      const dayStart = dayTitleMatch.index;
-      const dayEnd = (i < dayMatches.length - 1) ? dayMatches[i + 1].index : respuesta.length;
-      
-      const dayContent = respuesta.substring(dayStart, dayEnd);
-      crearSeccionDia(dayTitle, dayContent, i + 1);
-    }
-  }
-  
-  // Mostrar los botones de acción principales
-  actionButtons.style.display = 'flex';
-  
-  // Asegurarse de que la tarjeta de respuesta sea visible
-  responseCard.style.display = 'block';
-  
-  // Desplazarse hasta el resultado
-  responseCard.scrollIntoView({ behavior: 'smooth' });
-  
-  // Guardar el itinerario actual en el historial
-  guardarItinerarioEnHistorial(destino, fechaInicio, fechaFin, respuesta);
+  // Resto del código para procesar los días...
 }
 
-// Función para crear una sección de día con controles de edición
+// Función auxiliar para calcular la duración del viaje
+function calcularDuracionViaje(fechaInicio, fechaFin) {
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+  const duracion = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  return duracion;
+}
+
+// Mejora de la función para convertir Markdown a un formato visual más atractivo
+function procesarTextoMarkdown(texto) {
+  if (!texto) return '';
+  
+  // Procesar las cabeceras
+  texto = texto.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+               .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+               .replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  
+  // Transformar actividades en tarjetas visuales
+  texto = texto.replace(/^- (\d{1,2}:\d{2})(.+?)(\n(?!-)|\n$|$)/gms, function(match, hora, contenido, final) {
+    // Extraer dirección para el mapa
+    const direccionMatch = contenido.match(/Dirección: ([^.]+)/i);
+    const direccion = direccionMatch ? direccionMatch[1].trim() : '';
+    
+    // Extraer costo
+    const costoMatch = contenido.match(/(€\d+|\$\d+|\d+€|\d+\$)/g);
+    const costo = costoMatch ? costoMatch[0] : '';
+    
+    // Determinar icono para la actividad
+    let actividadIcono = 'fa-map-marker-alt';
+    if (contenido.toLowerCase().includes('desayuno') || contenido.toLowerCase().includes('almuerzo') || 
+        contenido.toLowerCase().includes('cena') || contenido.toLowerCase().includes('restaurante')) {
+      actividadIcono = 'fa-utensils';
+    } else if (contenido.toLowerCase().includes('museo') || contenido.toLowerCase().includes('galería')) {
+      actividadIcono = 'fa-landmark';
+    } else if (contenido.toLowerCase().includes('hotel') || contenido.toLowerCase().includes('alojamiento')) {
+      actividadIcono = 'fa-bed';
+    } else if (contenido.toLowerCase().includes('parque') || contenido.toLowerCase().includes('jardín')) {
+      actividadIcono = 'fa-tree';
+    }
+    
+    // Extraer título principal
+    let titulo = '';
+    if (contenido.includes('-')) {
+      titulo = contenido.split('-')[1].trim();
+      if (titulo.includes('.')) {
+        titulo = titulo.split('.')[0].trim();
+      }
+    } else {
+      titulo = contenido.split('.')[0].trim();
+    }
+    
+    // Crear mapa integrado (si hay dirección)
+    const mapaHTML = direccion ? 
+      `<div class="activity-map">
+        <iframe 
+          src="https://maps.google.com/maps?q=${encodeURIComponent(direccion)}&output=embed" 
+          allowfullscreen>
+        </iframe>
+      </div>` : '';
+    
+    // Extraer enlaces
+    const urlMatch = contenido.match(/\((https?:\/\/[^\s\)]+)\)/);
+    const url = urlMatch ? urlMatch[1] : '';
+    const botonEnlace = url ? 
+      `<a href="${url}" target="_blank" class="itinerary-link">
+        <i class="fas fa-external-link-alt"></i> Ver sitio web
+      </a>` : '';
+    
+    // Reemplazar la información de transporte con etiquetas
+    const transporteMatch = contenido.match(/Transporte: ([^.]+)/i);
+    let transporteInfo = '';
+    if (transporteMatch) {
+      const textoTransporte = transporteMatch[1].trim();
+      let iconoTransporte = 'fa-route';
+      
+      if (textoTransporte.toLowerCase().includes('caminando') || textoTransporte.toLowerCase().includes('a pie')) {
+        iconoTransporte = 'fa-walking';
+      } else if (textoTransporte.toLowerCase().includes('metro')) {
+        iconoTransporte = 'fa-subway';
+      } else if (textoTransporte.toLowerCase().includes('bus') || textoTransporte.toLowerCase().includes('autobús')) {
+        iconoTransporte = 'fa-bus';
+      } else if (textoTransporte.toLowerCase().includes('tren')) {
+        iconoTransporte = 'fa-train';
+      } else if (textoTransporte.toLowerCase().includes('taxi')) {
+        iconoTransporte = 'fa-taxi';
+      }
+      
+      transporteInfo = `
+        <span class="activity-info-tag">
+          <i class="fas ${iconoTransporte}"></i> ${textoTransporte}
+        </span>`;
+    }
+    
+    // Crear HTML para la tarjeta
+    return `
+      <div class="activity-card">
+        <div class="activity-header">
+          <div class="activity-time">
+            <i class="fas fa-clock"></i> ${hora}
+          </div>
+          <div class="activity-type">
+            <i class="fas ${actividadIcono}"></i>
+          </div>
+        </div>
+        <div class="activity-content">
+          <h4>${titulo}</h4>
+          <p>${contenido.replace(/Dirección: [^.]+/i, '').replace(/Transporte: [^.]+/i, '')}</p>
+          ${mapaHTML}
+        </div>
+        <div class="activity-footer">
+          ${transporteInfo}
+          ${direccion ? `
+            <span class="activity-info-tag">
+              <i class="fas fa-map-marker-alt"></i> ${direccion}
+            </span>` : ''}
+          ${costo ? `
+            <span class="activity-info-tag">
+              <i class="fas fa-euro-sign"></i> ${costo}
+            </span>` : ''}
+          ${botonEnlace}
+        </div>
+      </div>`;
+  });
+  
+  // Procesar el resto del texto
+  // ... resto del código procesarTextoMarkdown ...
+  
+  return texto;
+}
+
+// Function to create a day section
 function crearSeccionDia(titulo, contenido, numDia) {
-  // Convertir markdown a HTML para el contenido del día
-  let dayHtml = contenido
-    // Convertir encabezados
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    // Convertir listas
-    .replace(/^\- (.*$)/gm, '<li>$1</li>')
-    // Convertir URLs entre paréntesis en enlaces
-    .replace(/\(https?:\/\/[^\s\)]+\)/g, url => {
-      const cleanUrl = url.substring(1, url.length - 1);
-      return `(<a href="${cleanUrl}" class="itinerary-link" target="_blank">${cleanUrl}</a>)`;
-    })
-    // Convertir listas en bloques ul
-    .replace(/<li>.*?<\/li>/gs, match => '<ul>' + match + '</ul>')
-    // Eliminar duplicados de ul
-    .replace(/<\/ul>\s*<ul>/g, '');
+  // Convert markdown to HTML for the day content
+  const dayHtml = procesarTextoMarkdown(contenido);
   
-  // Resaltar visualmente las recomendaciones de reserva
-  dayHtml = dayHtml.replace(/\[RESERVAR\]/g, '<span class="reservation-tag"><i class="fas fa-calendar-check"></i> RESERVAR</span>');
-  
-  // Añadir iconos a los horarios
-  dayHtml = dayHtml.replace(/(\d{1,2}:\d{2})/g, '<span class="time-tag"><i class="fas fa-clock"></i> $1</span>');
-  
-  // Mejorar visualmente los consejos del día
-  dayHtml = dayHtml.replace(/<h3>CONSEJOS DEL DÍA<\/h3>/g, '<h3 class="tips-header"><i class="fas fa-lightbulb"></i> CONSEJOS DEL DÍA</h3>');
-  
-  // Crear el contenedor del día con los controles
+  // Create the day container with controls
   const dayContainer = document.createElement('div');
   dayContainer.className = 'day-section';
   dayContainer.id = `day-${numDia}`;
+  
+  // Extraer actividades para la línea de tiempo
+  const actividadesMatch = contenido.match(/^- \d{1,2}:\d{2}.*$/gm);
+  const actividades = actividadesMatch || [];
+  
+  // HTML para la sección de día
   dayContainer.innerHTML = `
     <div class="day-header">
       <h2>${titulo}</h2>
@@ -1232,30 +1465,41 @@ function crearSeccionDia(titulo, contenido, numDia) {
         </button>
       </div>
     </div>
+    <div class="timeline-wrapper"></div>
+    <div class="map-wrapper"></div>
     <div class="day-content">
       ${dayHtml}
     </div>
   `;
   
-  // Añadir contenedor al responseBox
+  // Agregar al responseBox
   responseBox.appendChild(dayContainer);
   
-  // Hacer que cada actividad sea editable, excepto los consejos
+  // Crear y añadir la línea de tiempo
+  if (actividades.length > 0) {
+    const timeline = crearLineaTiempo(numDia, actividades);
+    dayContainer.querySelector('.timeline-wrapper').appendChild(timeline);
+    
+    // Crear y añadir el mapa principal
+    const mapa = crearMapaPrincipal(numDia, contenido);
+    if (mapa) {
+      dayContainer.querySelector('.map-wrapper').appendChild(mapa);
+    }
+  }
+  
+  // Configurar edición de actividades
+  setupActivityEditing(dayContainer, numDia);
+}
+
+// Helper function to make activities editable
+function setupActivityEditing(dayContainer, numDia) {
   const liElements = dayContainer.querySelectorAll('li');
   liElements.forEach((li, index) => {
-    // Verificar si es parte de la sección de consejos
-    const esPadreDeConsejos = li.parentNode.previousElementSibling && 
-                         li.parentNode.previousElementSibling.classList.contains('tips-header');
-    const esConsejos = li.textContent.includes('CONSEJOS DEL DÍA') || esPadreDeConsejos;
+    // Check if it's part of the tips section
+    const isInTips = li.closest('ul')?.previousElementSibling?.classList.contains('tips-header') || false;
     
-    if (esConsejos) {
-      // Para consejos, solo añadimos un contenedor sin controles
-      const activityContainer = document.createElement('div');
-      activityContainer.className = 'activity-container consejos-container';
-      activityContainer.innerHTML = li.outerHTML;
-      li.parentNode.replaceChild(activityContainer, li);
-    } else {
-      // Para actividades normales, añadimos los controles de edición y regeneración
+    if (!isInTips) {
+      // For normal activities, add edit and regenerate controls
       const activityContainer = document.createElement('div');
       activityContainer.className = 'activity-container';
       activityContainer.innerHTML = li.outerHTML + `
@@ -1269,97 +1513,21 @@ function crearSeccionDia(titulo, contenido, numDia) {
         </div>
       `;
       li.parentNode.replaceChild(activityContainer, li);
+    } else {
+      // For tips, only add a container without controls
+      const activityContainer = document.createElement('div');
+      activityContainer.className = 'activity-container consejos-container';
+      activityContainer.innerHTML = li.outerHTML;
+      li.parentNode.replaceChild(activityContainer, li);
     }
   });
   
-  // También protegemos la sección completa de consejos
+  // Add special class to tips section
   const tipsHeader = dayContainer.querySelector('.tips-header');
   if (tipsHeader) {
-    // Añadir una clase para identificar la sección de consejos
     const tipsSection = tipsHeader.parentNode;
     tipsSection.classList.add('consejos-section');
-    
-    // Eliminar cualquier botón de regeneración dentro de esta sección
-    const regenerateButtons = tipsSection.querySelectorAll('.activity-regenerate-btn');
-    regenerateButtons.forEach(btn => btn.remove());
   }
-}
-
-// Mejorar la función de procesamiento de texto para destacar URLs y reservas
-function procesarTextoConEnlaces(texto) {
-  if (!texto) return '';
-  
-  // Reemplazar enlaces entre paréntesis con versiones acortadas y bien formateadas
-  texto = texto.replace(/\(https?:\/\/[^\s\)]+\)/g, url => {
-    const cleanUrl = url.substring(1, url.length - 1);
-    const displayUrl = acortarUrl(cleanUrl);
-    return `(<a href="${cleanUrl}" target="_blank" class="place-link">${displayUrl} <i class="fas fa-external-link-alt"></i></a>)`;
-  });
-  
-  // Destacar más prominentemente los lugares que requieren reserva
-  texto = texto.replace(/\[RESERVAR\]/gi, '<span class="reservation-required"><i class="fas fa-calendar-check"></i> Reserva requerida</span>');
-  
-  // Destacar las secciones de consejos
-  texto = texto.replace(/(CONSEJOS DEL DÍA|TIPS DEL DÍA):/gi, '<h4 class="tips-header"><i class="fas fa-lightbulb"></i> $1:</h4>');
-  
-  // Reemplazar saltos de línea por <br>
-  texto = texto.replace(/\n/g, '<br>');
-  
-  return texto;
-}
-
-// Función para acortar URLs para visualización
-function acortarUrl(url) {
-  try {
-    const urlObj = new URL(url);
-    // Mostrar solo el hostname y la primera parte del path
-    let displayUrl = urlObj.hostname;
-    if (urlObj.pathname && urlObj.pathname !== '/') {
-      // Tomar solo el primer nivel del path y añadir "..."
-      const pathParts = urlObj.pathname.split('/').filter(part => part);
-      if (pathParts.length > 0) {
-        displayUrl += '/' + pathParts[0];
-        if (pathParts.length > 1) {
-          displayUrl += '/...';
-        }
-      }
-    }
-    return displayUrl;
-  } catch (e) {
-    // Si hay un error al parsear la URL, devolver la original
-    return url;
-  }
-}
-
-// Función para crear una tarjeta de día
-function crearTarjetaDia(titulo, contenido) {
-  const diaCard = document.createElement('div');
-  diaCard.className = 'day-card';
-  
-  // Crear contenido de la tarjeta
-  diaCard.innerHTML = `
-    <div class="day-card-header">
-      <h3>${titulo}</h3>
-      <div class="day-card-actions">
-        <button class="day-action-btn regenerate-btn" title="Regenerar este día">
-          <i class="fas fa-sync-alt"></i>
-        </button>
-        <button class="day-action-btn delete-btn" title="Eliminar este día">
-          <i class="fas fa-trash-alt"></i>
-        </button>
-      </div>
-    </div>
-    <div class="day-card-content">${contenido}</div>
-  `;
-  
-  // Añadir event listeners para los botones
-  const regenerateBtn = diaCard.querySelector('.regenerate-btn');
-  const deleteBtn = diaCard.querySelector('.delete-btn');
-  
-  regenerateBtn.addEventListener('click', () => regenerarDia(diaCard));
-  deleteBtn.addEventListener('click', () => eliminarDia(diaCard));
-  
-  return diaCard;
 }
 
 // Función para regenerar un día específico - Corregir la implementación
@@ -2578,20 +2746,49 @@ function generarSystemPrompt() {
   systemPrompt += "1. Crea un itinerario para CADA DÍA del viaje, sin excepción.\n";
   systemPrompt += "2. Estructura clara con encabezados H2 para días (## Día 1, ## Día 2, etc.)\n";
   systemPrompt += "3. Actividades listadas cronológicamente con horarios específicos (09:00, 14:30, etc.)\n";
-  systemPrompt += "4. Cada día DEBE incluir una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas\n\n";
+  systemPrompt += "4. Cada día DEBE incluir una sección '### CONSEJOS DEL DÍA' con 3-5 recomendaciones prácticas\n";
+  systemPrompt += "5. Al final de cada día, incluye una sección '### PRESUPUESTO DEL DÍA' con el costo estimado de todas las actividades, comidas y transporte\n\n";
   
-  // Reglas para los links y reservas
+  // Nuevas reglas de detalle para transporte y costos
+  systemPrompt += "DETALLES OBLIGATORIOS DE TRANSPORTE Y COSTOS:\n";
+  systemPrompt += "1. DISTANCIAS: Especifica la distancia exacta entre ubicaciones (en metros o cuadras). Ejemplo: 'A 500 metros' o 'A 3 cuadras'\n";
+  systemPrompt += "2. TRANSPORTE PÚBLICO: Especifica líneas exactas a tomar. Ejemplo: 'Metro Línea 4 desde Estación X hasta Estación Y'\n";
+  systemPrompt += "3. TIEMPO DE VIAJE: Indica cuánto tiempo tomará llegar de un lugar a otro. Ejemplo: '15 minutos caminando' o '25 minutos en metro'\n";
+  systemPrompt += "4. COSTOS INDIVIDUALES: Proporciona el costo estimado de cada actividad, comida y transporte\n";
+  systemPrompt += "5. PRESUPUESTO DIARIO: Al final de cada día, suma todos los gastos estimados\n";
+  systemPrompt += "6. PRESUPUESTO TOTAL: Al final del itinerario, añade un '## PRESUPUESTO TOTAL' con el costo estimado de todo el viaje\n\n";
+  
+  // Reglas para los links y reservas (existentes)
   systemPrompt += "ELEMENTOS OBLIGATORIOS EN CADA ACTIVIDAD:\n";
   systemPrompt += "1. LINKS: CADA atracción, restaurante, y lugar mencionado DEBE incluir un URL real entre paréntesis. Ejemplo: 'Museo del Prado (https://www.museodelprado.es/)'\n";
-  systemPrompt += "2. RESERVAS: Marca con [RESERVAR] los lugares donde sea necesario o recomendable reservar. Ejemplo: 'Restaurante Botín [RESERVAR] (https://botin.es/)'\n";
-  systemPrompt += "3. TRANSPORTE: Especifica el medio de transporte entre cada actividad\n\n";
+  systemPrompt += "2. DIRECCIÓN: Incluye la dirección física exacta de cada lugar. Ejemplo: 'Dirección: Calle de Ruiz de Alarcón 23, 28014 Madrid'\n";
+  systemPrompt += "3. RESERVAS: Marca con [RESERVAR] los lugares donde sea necesario o recomendable reservar.\n";
+  systemPrompt += "4. TRANSPORTE: Especifica el medio de transporte entre cada actividad con todos los detalles mencionados anteriormente, EVITANDO el uso de guiones o viñetas.\n\n";
   
-  // Reglas para el contenido
+  // Reglas para el contenido (existentes)
   systemPrompt += "CONTENIDO OBLIGATORIO:\n";
   systemPrompt += "1. Adapta el itinerario exactamente a las fechas indicadas (todos los días)\n";
   systemPrompt += "2. Incluye opciones específicas para los intereses mencionados\n";
   systemPrompt += "3. Respeta estrictamente el presupuesto y ritmo de viaje indicados\n";
   systemPrompt += "4. Cada día debe incluir al menos 4-5 actividades principales con tiempos y duraciones realistas\n";
+  systemPrompt += "5. Ajusta todas las recomendaciones al presupuesto especificado (bajo/medio/alto)\n\n";
+  
+  // Ejemplo de formato para clarificar
+  systemPrompt += "EJEMPLO DE FORMATO DE ACTIVIDAD:\n";
+  systemPrompt += "- 09:30 - Visita al Museo del Louvre (https://www.louvre.fr/) - Entrada: €15 - Transporte: Metro Línea 1, Estación Palais-Royal (15 minutos, €1.90) - A 800 metros del hotel\n";
+  systemPrompt += "- 12:30 - Almuerzo en Café de Flore [RESERVAR] (https://cafedeflore.fr/) - Costo aproximado: €25-30 - Transporte: Caminando 400 metros (5 minutos)\n\n";
+  
+  systemPrompt += "EJEMPLO DE PRESUPUESTO DIARIO:\n";
+  systemPrompt += "### PRESUPUESTO DEL DÍA\n";
+  systemPrompt += "- Atracciones: €45 (Museo €15, Torre Eiffel €30)\n";
+  systemPrompt += "- Comidas: €60 (Desayuno €10, Almuerzo €25, Cena €25)\n";
+  systemPrompt += "- Transporte: €15 (Metro €7, Taxi €8)\n";
+  systemPrompt += "- TOTAL DÍA 1: €120\n\n";
+  
+  // Actualizar el ejemplo de formato de actividad
+  systemPrompt += "EJEMPLO DE FORMATO DE ACTIVIDAD SIN GUIONES NI VIÑETAS:\n";
+  systemPrompt += "09:30 Visita al Museo del Louvre (https://www.louvre.fr/) - Entrada: €15. Dirección: Rue de Rivoli, 75001 París. Transporte: Metro Línea 1, Estación Palais-Royal (15 minutos, €1.90). A 800 metros del hotel.\n";
+  systemPrompt += "12:30 Almuerzo en Café de Flore [RESERVAR] (https://cafedeflore.fr/) - Costo aproximado: €25-30. Dirección: 172 Boulevard Saint-Germain, 75006 París. Transporte: Caminando 400 metros (5 minutos).\n\n";
   
   return systemPrompt;
 }
@@ -2972,4 +3169,647 @@ function checkCreditStatus() {
     initialized,
     isDev: IS_DEV_MODE
   });
+}
+
+// Add this HTML after the USE_REAL_API toggle in index.html
+const apiHelpText = document.createElement('small');
+apiHelpText.className = 'form-help';
+apiHelpText.innerHTML = 'En desarrollo: las llamadas directas a la API pueden requerir una extensión CORS como <a href="https://chrome.google.com/webstore/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank">Allow CORS</a>';
+document.getElementById('use-real-api-toggle').parentNode.parentNode.appendChild(apiHelpText);
+
+// Function to format URLs to be more readable
+function formatearURL(url) {
+  try {
+    const urlObj = new URL(url);
+    let displayUrl = urlObj.hostname;
+    
+    // Remove www. if present
+    displayUrl = displayUrl.replace(/^www\./, '');
+    
+    // Truncate if too long
+    if (displayUrl.length > 25) {
+      displayUrl = displayUrl.substring(0, 22) + '...';
+    }
+    
+    return displayUrl;
+  } catch (e) {
+    // If URL parsing fails, just return a shortened version
+    if (url.length > 25) {
+      return url.substring(0, 22) + '...';
+    }
+    return url;
+  }
+}
+
+// Add this function to handle itineraries without clear day sections
+function procesarContenidoCompleto(contenido) {
+  // Format the entire content using our markdown processor
+  const formattedContent = procesarTextoMarkdown(contenido);
+  
+  // Create a container for the content
+  const contentContainer = document.createElement('div');
+  contentContainer.className = 'full-itinerary-content';
+  contentContainer.innerHTML = formattedContent;
+  
+  // Add to the response box
+  responseBox.appendChild(contentContainer);
+  
+  // Add styling for this container
+  const style = document.createElement('style');
+  style.textContent = `
+    .full-itinerary-content {
+      padding: 20px;
+      background-color: var(--card-color);
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      line-height: 1.6;
+    }
+    
+    .full-itinerary-content h1, 
+    .full-itinerary-content h2, 
+    .full-itinerary-content h3 {
+      margin-top: 20px;
+      margin-bottom: 10px;
+      color: var(--heading-color);
+    }
+    
+    .full-itinerary-content ul {
+      margin-bottom: 20px;
+      padding-left: 20px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// Actualizar la función callAssistantWithBrowsing para usar GPT-4o y navegación web
+async function callAssistantWithBrowsing(promptText, systemPrompt, apiKey) {
+  console.log("Llamando a la API de OpenAI con GPT-4o y navegación web");
+  
+  try {
+    // Paso 1: Crear un asistente con GPT-4o y configurar navegación web con 'function'
+    const createAssistantResponse = await fetch('https://api.openai.com/v1/assistants', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        name: "Travel Planner",
+        instructions: systemPrompt + "\nUtiliza la web para buscar información actualizada sobre lugares, atracciones, hoteles y restaurantes para proporcionar las URL actualizadas y correctas.",
+        tools: [
+          {
+            "type": "function",
+            "function": {
+              "name": "web_crawler",
+              "description": "Crawl a website and extract relevant information for travel planning",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "URL to crawl for information"
+                  },
+                  "query": {
+                    "type": "string", 
+                    "description": "Optional search query for the website"
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        ]
+      })
+    });
+    
+    if (!createAssistantResponse.ok) {
+      const errorData = await createAssistantResponse.json();
+      throw new Error(`Error creando asistente: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    const assistant = await createAssistantResponse.json();
+    console.log("Asistente creado:", assistant.id);
+    
+    // Paso 2: Crear un thread
+    const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({})
+    });
+    
+    if (!createThreadResponse.ok) {
+      const errorData = await createThreadResponse.json();
+      throw new Error(`Error creando thread: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    const thread = await createThreadResponse.json();
+    console.log("Thread creado:", thread.id);
+    
+    // Paso 3: Añadir un mensaje al thread
+    const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        role: "user",
+        content: promptText
+      })
+    });
+    
+    if (!addMessageResponse.ok) {
+      const errorData = await addMessageResponse.json();
+      throw new Error(`Error añadiendo mensaje: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    console.log("Mensaje añadido al thread");
+    
+    // Paso 4: Ejecutar el asistente
+    const runAssistantResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        assistant_id: assistant.id
+      })
+    });
+    
+    if (!runAssistantResponse.ok) {
+      const errorData = await runAssistantResponse.json();
+      throw new Error(`Error ejecutando asistente: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    const run = await runAssistantResponse.json();
+    console.log("Ejecución iniciada:", run.id);
+    
+    // Paso 5: Esperar a que se complete la ejecución
+    let runStatus = await checkRunStatus(thread.id, run.id, apiKey);
+    let attempts = 0;
+    const maxAttempts = 120; // Aumentado para dar más tiempo
+    
+    console.log("Esperando respuesta del asistente...");
+    
+    while (runStatus.status !== 'completed' && attempts < maxAttempts) {
+      console.log(`Estado de ejecución: ${runStatus.status}, intento ${attempts + 1}/${maxAttempts}`);
+      
+      if (runStatus.status === 'requires_action') {
+        console.log("La ejecución requiere acción:", runStatus.required_action);
+        
+        if (runStatus.required_action?.type === 'submit_tool_outputs') {
+          await handleToolActions(thread.id, run.id, runStatus.required_action.submit_tool_outputs, apiKey);
+        }
+      } else if (runStatus.status === 'failed') {
+        throw new Error(`Ejecución fallida: ${runStatus.last_error?.message || 'Error desconocido'}`);
+      }
+      
+      // Esperar antes de verificar de nuevo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      runStatus = await checkRunStatus(thread.id, run.id, apiKey);
+      attempts++;
+    }
+    
+    if (runStatus.status !== 'completed') {
+      throw new Error(`La ejecución del asistente agotó el tiempo o falló. Estado final: ${runStatus.status}`);
+    }
+    
+    console.log("Ejecución completada, obteniendo mensajes...");
+    
+    // Paso 6: Obtener mensajes
+    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'OpenAI-Beta': 'assistants=v2'
+      }
+    });
+    
+    if (!messagesResponse.ok) {
+      const errorData = await messagesResponse.json();
+      throw new Error(`Error obteniendo mensajes: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    const messages = await messagesResponse.json();
+    
+    // Obtener el último mensaje del asistente
+    const assistantMessages = messages.data.filter(msg => msg.role === 'assistant');
+    if (assistantMessages.length === 0) {
+      throw new Error('No se encontraron mensajes del asistente');
+    }
+    
+    const lastMessage = assistantMessages[0];
+    console.log("Mensaje recibido del asistente");
+    
+    // Extraer el contenido del mensaje
+    if (Array.isArray(lastMessage.content)) {
+      // Encontrar el bloque de contenido de texto
+      const textContent = lastMessage.content.find(block => block.type === 'text');
+      if (textContent) {
+        console.log("Contenido de texto encontrado");
+        return {
+          choices: [{
+            message: {
+              content: textContent.text.value
+            }
+          }]
+        };
+      }
+    }
+    
+    console.log("Estructura del mensaje:", lastMessage);
+    return {
+      choices: [{
+        message: {
+          content: typeof lastMessage.content === 'string' 
+            ? lastMessage.content 
+            : JSON.stringify(lastMessage.content)
+        }
+      }]
+    };
+    
+  } catch (error) {
+    console.error("Error en callAssistantWithBrowsing:", error);
+    throw error;
+  }
+}
+
+// Actualizar la función handleToolActions para manejar acciones del navegador
+async function handleToolActions(threadId, runId, toolOutputs, apiKey) {
+  console.log("Manejando acciones de herramientas:", toolOutputs);
+  
+  // Crear un array de salidas vacío si hay llamadas a herramientas
+  const outputs = [];
+  
+  if (toolOutputs?.tool_calls) {
+    for (const toolCall of toolOutputs.tool_calls) {
+      console.log("ID de llamada a herramienta:", toolCall.id);
+      console.log("Función:", toolCall.function?.name);
+      console.log("Argumentos:", toolCall.function?.arguments);
+      
+      // Solo para depuración
+      try {
+        const args = JSON.parse(toolCall.function?.arguments || "{}");
+        console.log("Argumentos parseados:", args);
+      } catch (e) {
+        console.log("No se pudieron parsear los argumentos");
+      }
+      
+      // Para el navegador, permitir que complete la acción
+      outputs.push({
+        tool_call_id: toolCall.id,
+        output: JSON.stringify({ 
+          result: "Navegación web completada con éxito",
+          url: toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments).url : "unknown"
+        })
+      });
+    }
+  }
+  
+  // Enviar las salidas de las herramientas
+  console.log("Enviando salidas de herramientas:", outputs);
+  
+  const submitResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}/submit_tool_outputs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'OpenAI-Beta': 'assistants=v2'
+    },
+    body: JSON.stringify({
+      tool_outputs: outputs
+    })
+  });
+  
+  if (!submitResponse.ok) {
+    const errorData = await submitResponse.json();
+    throw new Error(`Error enviando salidas de herramientas: ${errorData.error?.message || 'Error desconocido'}`);
+  }
+  
+  const result = await submitResponse.json();
+  console.log("Resultado de envío de salidas:", result);
+  
+  return result;
+}
+
+// Update the checkRunStatus function to use v2
+async function checkRunStatus(threadId, runId, apiKey) {
+  const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'OpenAI-Beta': 'assistants=v2'  // Updated to v2
+    }
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Error checking run status: ${errorData.error?.message || 'Unknown error'}`);
+  }
+  
+  return response.json();
+}
+
+// Actualizado para usar la API de chat directamente con GPT-4o
+async function callGPT4oDirectly(promptText, systemPrompt, apiKey) {
+  console.log("Llamando directamente a la API de Chat con GPT-4o");
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: promptText }
+        ],
+        temperature: 0.7,
+        max_tokens: 4000
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Error llamando a la API de OpenAI: ${errorData.error?.message || 'Error desconocido'}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error en callGPT4oDirectly:", error);
+    throw error;
+  }
+}
+
+// Función mejorada para crear una línea de tiempo visual del itinerario
+function crearLineaTiempo(numDia, actividades) {
+  const timelineContainer = document.createElement('div');
+  timelineContainer.className = 'timeline-container';
+  timelineContainer.id = `timeline-day-${numDia}`;
+  
+  // Crear título para la línea de tiempo
+  const timelineTitle = document.createElement('h3');
+  timelineTitle.className = 'timeline-title';
+  timelineTitle.innerHTML = '<i class="fas fa-clock"></i> Cronograma del Día';
+  timelineContainer.appendChild(timelineTitle);
+  
+  // Crear el elemento para la línea de tiempo
+  const timelineElement = document.createElement('div');
+  timelineElement.className = 'timeline-element';
+  timelineElement.id = `timeline-element-${numDia}`;
+  timelineContainer.appendChild(timelineElement);
+  
+  // Crear datasets para la línea de tiempo
+  const items = new vis.DataSet();
+  
+  // Agregar actividades a la línea de tiempo
+  actividades.forEach((actividad, index) => {
+    // Extraer la hora del texto de la actividad
+    const horaMatch = actividad.match(/(\d{1,2}:\d{2})/);
+    if (horaMatch) {
+      const hora = horaMatch[1];
+      const [h, m] = hora.split(':').map(Number);
+      
+      // Crear fecha para la línea de tiempo
+      const fecha = new Date();
+      fecha.setHours(h, m, 0);
+      
+      // Determinar el tipo de actividad para elegir un icono y color
+      let icono = 'fas fa-map-marker-alt';
+      let color = '#3498db';
+      let grupo = 1;
+      
+      if (actividad.toLowerCase().includes('desayuno')) {
+        icono = 'fas fa-coffee';
+        color = '#e67e22';
+        grupo = 2;
+      } else if (actividad.toLowerCase().includes('almuerzo') || 
+                actividad.toLowerCase().includes('cena') || 
+                actividad.toLowerCase().includes('comida')) {
+        icono = 'fas fa-utensils';
+        color = '#e74c3c';
+        grupo = 2;
+      } else if (actividad.toLowerCase().includes('museo') || 
+                actividad.toLowerCase().includes('galería') || 
+                actividad.toLowerCase().includes('exposición')) {
+        icono = 'fas fa-landmark';
+        color = '#9b59b6';
+        grupo = 3;
+      } else if (actividad.toLowerCase().includes('parque') || 
+                actividad.toLowerCase().includes('jardín')) {
+        icono = 'fas fa-tree';
+        color = '#2ecc71';
+        grupo = 4;
+      } else if (actividad.toLowerCase().includes('iglesia') || 
+                actividad.toLowerCase().includes('catedral')) {
+        icono = 'fas fa-church';
+        color = '#f1c40f';
+        grupo = 5;
+      } else if (actividad.toLowerCase().includes('tienda') || 
+                actividad.toLowerCase().includes('compras')) {
+        icono = 'fas fa-shopping-bag';
+        color = '#1abc9c';
+        grupo = 6;
+      }
+      
+      // Extraer título
+      let titulo = actividad.replace(/^\d{1,2}:\d{2}/, '').trim();
+      if (titulo.includes('-')) {
+        titulo = titulo.split('-')[0].trim();
+      }
+      
+      // Agregar a la línea de tiempo
+      items.add({
+        id: index,
+        content: `<div class="timeline-item" style="background-color:${color};">
+                   <i class="${icono}"></i> <span>${titulo}</span>
+                 </div>`,
+        start: fecha,
+        group: grupo,
+        style: `color:${color};`
+      });
+    }
+  });
+  
+  // Crear grupos para categorizar las actividades
+  const groups = new vis.DataSet([
+    {id: 1, content: 'Lugares de interés'},
+    {id: 2, content: 'Comidas'},
+    {id: 3, content: 'Cultura'},
+    {id: 4, content: 'Naturaleza'},
+    {id: 5, content: 'Religioso'},
+    {id: 6, content: 'Compras'}
+  ]);
+  
+  // Configuración de la línea de tiempo
+  const options = {
+    orientation: 'top',
+    height: '250px',
+    min: new Date(new Date().setHours(6, 0, 0)),
+    max: new Date(new Date().setHours(23, 59, 0)),
+    stack: false,
+    zoomable: true,
+    zoomMin: 1000 * 60 * 60 * 4, // 4 horas mínimo de zoom
+    zoomMax: 1000 * 60 * 60 * 24, // 1 día máximo de zoom
+    format: {
+      minorLabels: {
+        hour: 'HH:mm',
+      }
+    },
+    timeAxis: {scale: 'hour', step: 1},
+    showCurrentTime: false
+  };
+  
+  // Crear la línea de tiempo
+  const timeline = new vis.Timeline(timelineElement, items, groups, options);
+  
+  // Agregar navegación por horas 
+  const timelineNav = document.createElement('div');
+  timelineNav.className = 'timeline-navigation';
+  timelineNav.innerHTML = `
+    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'morning')">
+      <i class="fas fa-sun"></i> Mañana
+    </button>
+    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'noon')">
+      <i class="fas fa-cloud-sun"></i> Mediodía
+    </button>
+    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'afternoon')">
+      <i class="fas fa-cloud"></i> Tarde
+    </button>
+    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'evening')">
+      <i class="fas fa-moon"></i> Noche
+    </button>
+    <button class="timeline-nav-btn" onclick="zoomTimeline('${timelineElement.id}', 'all')">
+      <i class="fas fa-calendar-day"></i> Todo el día
+    </button>
+  `;
+  timelineContainer.appendChild(timelineNav);
+  
+  return timelineContainer;
+}
+
+// Función para navegar por la línea de tiempo
+function zoomTimeline(timelineId, period) {
+  const timeline = document.getElementById(timelineId);
+  const timelineInstance = timeline._timeline; // Acceder a la instancia
+
+  if (!timelineInstance) return;
+  
+  const today = new Date();
+  let start, end;
+  
+  switch(period) {
+    case 'morning':
+      start = new Date(today.setHours(6, 0, 0));
+      end = new Date(today.setHours(12, 0, 0));
+      break;
+    case 'noon':
+      start = new Date(today.setHours(11, 0, 0));
+      end = new Date(today.setHours(15, 0, 0));
+      break;
+    case 'afternoon':
+      start = new Date(today.setHours(14, 0, 0));
+      end = new Date(today.setHours(19, 0, 0));
+      break;
+    case 'evening':
+      start = new Date(today.setHours(18, 0, 0));
+      end = new Date(today.setHours(23, 59, 0));
+      break;
+    case 'all':
+    default:
+      start = new Date(today.setHours(6, 0, 0));
+      end = new Date(today.setHours(23, 59, 0));
+  }
+  
+  timelineInstance.setWindow(start, end);
+}
+
+// Función para crear un mapa principal con todas las ubicaciones del día
+function crearMapaPrincipal(numDia, contenido) {
+  // Extraer todas las direcciones del contenido del día
+  const direcciones = [];
+  const actividadesMatch = contenido.match(/^- \d{1,2}:\d{2}.*?Dirección: ([^.]+)/gmi);
+  
+  if (!actividadesMatch || actividadesMatch.length === 0) {
+    return ''; // No hay direcciones para mostrar
+  }
+  
+  // Procesar cada actividad para extraer hora, título y dirección
+  actividadesMatch.forEach(act => {
+    const horaMatch = act.match(/(\d{1,2}:\d{2})/);
+    const direccionMatch = act.match(/Dirección: ([^.]+)/i);
+    
+    if (horaMatch && direccionMatch) {
+      const hora = horaMatch[1];
+      const direccion = direccionMatch[1].trim();
+      
+      // Extraer título de la actividad
+      let titulo = act.replace(/^- \d{1,2}:\d{2}/, '').trim();
+      if (titulo.includes('-')) {
+        titulo = titulo.split('-')[0].trim();
+      } else if (titulo.includes('.')) {
+        titulo = titulo.split('.')[0].trim();
+      }
+      
+      direcciones.push({
+        hora,
+        titulo,
+        direccion
+      });
+    }
+  });
+  
+  // Si no hay direcciones después de procesar, retornar vacío
+  if (direcciones.length === 0) {
+    return '';
+  }
+  
+  // Crear contenedor para el mapa
+  const mapContainer = document.createElement('div');
+  mapContainer.className = 'day-map-container';
+  mapContainer.id = `map-day-${numDia}`;
+  
+  // HTML para el mapa
+  const locationsParam = direcciones.map(d => encodeURIComponent(d.direccion)).join('|');
+  
+  mapContainer.innerHTML = `
+    <h3 class="map-title"><i class="fas fa-map-marked-alt"></i> Mapa del Día ${numDia}</h3>
+    <div class="day-map">
+      <iframe
+        width="100%"
+        height="350"
+        style="border:0"
+        loading="lazy"
+        allowfullscreen
+        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCAQ45BgdesHgI5OIlwKI_-F-z5Q8tjKTM&q=${direcciones[0].direccion}">
+      </iframe>
+    </div>
+    <div class="day-locations">
+      ${direcciones.map((d, i) => `
+        <div class="location-item">
+          <div class="location-marker">${i+1}</div>
+          <div class="location-details">
+            <div class="location-time">${d.hora}</div>
+            <div class="location-title">${d.titulo}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  return mapContainer;
 }

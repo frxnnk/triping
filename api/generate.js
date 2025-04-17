@@ -1,51 +1,50 @@
+import { Configuration, OpenAIApi } from 'openai';
+
 export default async function handler(req, res) {
-  // Solo permitir método POST
+  // Check if the request method is POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed. Use POST instead.' });
   }
-  
+
   try {
-    // Obtener la API key desde las variables de entorno
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Get API key from environment variable or from request header
+    const apiKey = req.headers['x-api-key'] || process.env.OPENAI_API_KEY;
     
-    // Verificar que tenemos una API key
     if (!apiKey) {
-      return res.status(500).json({ error: { message: 'API key no configurada en el servidor' } });
+      return res.status(400).json({ error: 'API key is missing. Please provide a valid OpenAI API key.' });
     }
-    
-    // Obtener los datos del prompt del cuerpo de la solicitud
+
+    // Configure OpenAI client
+    const configuration = new Configuration({
+      apiKey: apiKey,
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // Extract data from request body
     const { promptData, systemPrompt } = req.body;
     
-    // Hacer la solicitud a OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: promptData }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-      })
-    });
-    
-    const data = await response.json();
-    
-    // Verificar si hay errores en la respuesta de OpenAI
-    if (data.error) {
-      console.error('Error de OpenAI:', data.error);
-      return res.status(500).json({ error: { message: data.error.message || 'Error en la API de OpenAI' } });
+    if (!promptData) {
+      return res.status(400).json({ error: 'Prompt data is required.' });
     }
-    
-    // Devolver la respuesta al cliente
-    return res.status(200).json(data);
+
+    // Call OpenAI API
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt || "You are a helpful travel assistant." },
+        { role: "user", content: promptData }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
+
+    // Return response
+    return res.status(200).json(response.data);
   } catch (error) {
-    console.error('Error en handler:', error);
-    return res.status(500).json({ error: { message: error.message || 'Error en el servidor' } });
+    console.error('OpenAI API Error:', error);
+    return res.status(500).json({ 
+      error: error.message || 'An error occurred while processing your request.',
+      details: error.response?.data
+    });
   }
 } 
